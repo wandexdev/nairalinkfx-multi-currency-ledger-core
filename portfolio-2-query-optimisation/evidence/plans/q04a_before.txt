@@ -1,0 +1,32 @@
+-- Q4a (live aggregate) Treasury dashboard: daily converted volume (NGN) and order count per currency, last 30 days
+SELECT date_trunc('day', o.placed_at)::date AS day, w.currency_code AS bought_ccy,
+       count(*) AS orders, sum(o.sell_amount) AS ngn_volume, sum(o.fee_amount) AS fee_revenue
+FROM fx.fx_orders o
+JOIN fx.wallets w ON w.wallet_id = o.buy_wallet
+WHERE o.placed_at >= now() - interval '30 days'
+GROUP BY 1, 2
+ORDER BY 1 DESC, 2;
+
+GroupAggregate  (cost=10660.90..11645.24 rows=28124 width=80) (actual time=99.062..112.452 rows=93 loops=1)
+  Group Key: ((date_trunc('day'::text, o.placed_at))::date), w.currency_code
+  Buffers: shared hit=3943
+  ->  Sort  (cost=10660.90..10731.21 rows=28124 width=22) (actual time=98.969..101.682 rows=28175 loops=1)
+        Sort Key: ((date_trunc('day'::text, o.placed_at))::date) DESC, w.currency_code
+        Sort Method: quicksort  Memory: 2089kB
+        Buffers: shared hit=3943
+        ->  Hash Join  (cost=3323.16..8582.60 rows=28124 width=22) (actual time=26.540..84.386 rows=28175 loops=1)
+              Hash Cond: (o.buy_wallet = w.wallet_id)
+              Buffers: shared hit=3943
+              ->  Seq Scan on fx_orders o  (cost=0.00..5045.00 rows=28124 width=30) (actual time=0.007..39.455 rows=28175 loops=1)
+                    Filter: (placed_at >= (now() - '30 days'::interval))
+                    Rows Removed by Filter: 121825
+                    Buffers: shared hit=2420
+              ->  Hash  (cost=2323.07..2323.07 rows=80007 width=12) (actual time=26.067..26.069 rows=80007 loops=1)
+                    Buckets: 131072  Batches: 1  Memory Usage: 4775kB
+                    Buffers: shared hit=1523
+                    ->  Seq Scan on wallets w  (cost=0.00..2323.07 rows=80007 width=12) (actual time=0.007..10.059 rows=80007 loops=1)
+                          Buffers: shared hit=1523
+Planning:
+  Buffers: shared hit=11
+Planning Time: 0.231 ms
+Execution Time: 113.444 ms

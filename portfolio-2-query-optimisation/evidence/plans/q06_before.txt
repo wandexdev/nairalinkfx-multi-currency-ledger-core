@@ -1,0 +1,42 @@
+-- Q6 USD/NGN daily average mid-rate with a 7-day moving average (analytic window frame)
+WITH daily AS (
+  SELECT date_trunc('day', captured_at)::date AS day, avg((bid+ask)/2) AS mid
+  FROM fx.fx_rates
+  WHERE base_ccy = 'USD' AND quote_ccy = 'NGN' AND lp_id = 1
+    AND captured_at >= now() - interval '60 days'
+  GROUP BY 1
+)
+SELECT day, round(mid,2) AS mid,
+       round(avg(mid) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),2) AS ma7
+FROM daily ORDER BY day DESC LIMIT 14;
+
+Limit  (cost=34959.54..34959.58 rows=14 width=68) (actual time=150.258..150.369 rows=14 loops=1)
+  Buffers: shared hit=1130 read=12402
+  ->  Sort  (cost=34959.54..35023.96 rows=25768 width=68) (actual time=150.256..150.365 rows=14 loops=1)
+        Sort Key: ((date_trunc('day'::text, fx_rates.captured_at))::date) DESC
+        Sort Method: top-N heapsort  Memory: 27kB
+        Buffers: shared hit=1130 read=12402
+        ->  WindowAgg  (cost=30271.11..34340.16 rows=25768 width=68) (actual time=143.644..150.330 rows=61 loops=1)
+              Buffers: shared hit=1130 read=12402
+              ->  Finalize GroupAggregate  (cost=30271.11..33824.80 rows=25768 width=36) (actual time=143.537..150.099 rows=61 loops=1)
+                    Group Key: ((date_trunc('day'::text, fx_rates.captured_at))::date)
+                    Buffers: shared hit=1130 read=12402
+                    ->  Gather Merge  (cost=30271.11..33205.14 rows=22496 width=36) (actual time=143.177..149.910 rows=91 loops=1)
+                          Workers Planned: 2
+                          Workers Launched: 2
+                          Buffers: shared hit=1130 read=12402
+                          ->  Partial GroupAggregate  (cost=29271.08..29608.52 rows=11248 width=36) (actual time=123.607..134.270 rows=30 loops=3)
+                                Group Key: ((date_trunc('day'::text, fx_rates.captured_at))::date)
+                                Buffers: shared hit=1130 read=12402
+                                ->  Sort  (cost=29271.08..29299.20 rows=11248 width=20) (actual time=123.528..125.273 rows=8852 loops=3)
+                                      Sort Key: ((date_trunc('day'::text, fx_rates.captured_at))::date)
+                                      Sort Method: quicksort  Memory: 555kB
+                                      Buffers: shared hit=1130 read=12402
+                                      Worker 0:  Sort Method: quicksort  Memory: 786kB
+                                      Worker 1:  Sort Method: quicksort  Memory: 866kB
+                                      ->  Parallel Seq Scan on fx_rates  (cost=0.00..28514.24 rows=11248 width=20) (actual time=7.001..118.501 rows=8852 loops=3)
+                                            Filter: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = 1) AND (captured_at >= (now() - '60 days'::interval)))
+                                            Rows Removed by Filter: 471148
+                                            Buffers: shared hit=1056 read=12402
+Planning Time: 0.147 ms
+Execution Time: 150.411 ms

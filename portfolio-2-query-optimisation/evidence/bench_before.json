@@ -1,0 +1,141 @@
+{
+ "q01a": {
+  "median_ms": 708.08,
+  "runs_ms": [
+   1260.699,
+   1131.949,
+   708.077,
+   463.399,
+   428.929
+  ],
+  "scans": [
+   "Parallel Seq Scan on fx_rates"
+  ]
+ },
+ "q01b": {
+  "median_ms": 695.52,
+  "runs_ms": [
+   695.52,
+   590.476,
+   559.336,
+   767.17,
+   877.03
+  ],
+  "scans": [
+   "Index Only Scan on liquidity_providers",
+   "Seq Scan on fx_rates"
+  ]
+ },
+ "q02": {
+  "median_ms": 54.3,
+  "runs_ms": [
+   61.887,
+   56.66,
+   46.147,
+   54.301,
+   48.786
+  ],
+  "scans": [
+   "Index Scan on transactions",
+   "Index Scan on wallets",
+   "Parallel Seq Scan on ledger_entries"
+  ]
+ },
+ "q03": {
+  "median_ms": 15.82,
+  "runs_ms": [
+   26.179,
+   15.819,
+   13.415,
+   13.307,
+   26.179
+  ],
+  "scans": [
+   "Index Scan on wallets",
+   "Parallel Seq Scan on fx_orders"
+  ]
+ },
+ "q04a": {
+  "median_ms": 118.89,
+  "runs_ms": [
+   146.769,
+   145.763,
+   118.892,
+   117.009,
+   113.444
+  ],
+  "scans": [
+   "Seq Scan on fx_orders",
+   "Seq Scan on wallets"
+  ]
+ },
+ "q05": {
+  "median_ms": 130.92,
+  "runs_ms": [
+   120.68,
+   130.924,
+   129.357,
+   148.473,
+   155.997
+  ],
+  "scans": [
+   "Seq Scan on customers",
+   "Seq Scan on fx_orders"
+  ]
+ },
+ "q06": {
+  "median_ms": 84.91,
+  "runs_ms": [
+   73.047,
+   74.255,
+   94.535,
+   84.91,
+   150.411
+  ],
+  "scans": [
+   "Parallel Seq Scan on fx_rates"
+  ]
+ },
+ "q07": {
+  "median_ms": 364.55,
+  "runs_ms": [
+   399.578,
+   340.585,
+   364.548,
+   368.068,
+   356.998
+  ],
+  "scans": [
+   "Parallel Seq Scan on ledger_entries",
+   "Seq Scan on wallets"
+  ]
+ },
+ "q08": {
+  "median_ms": 168.7,
+  "runs_ms": [
+   106.593,
+   147.925,
+   168.701,
+   168.726,
+   201.646
+  ],
+  "scans": [
+   "Seq Scan on customers",
+   "Seq Scan on fx_orders",
+   "Seq Scan on kyc_tiers"
+  ]
+ },
+ "q09": {
+  "median_ms": 0.04,
+  "runs_ms": [
+   0.05,
+   0.047,
+   0.039,
+   0.042,
+   0.041
+  ],
+  "scans": [
+   "Index Scan on transactions"
+  ]
+ }
+}

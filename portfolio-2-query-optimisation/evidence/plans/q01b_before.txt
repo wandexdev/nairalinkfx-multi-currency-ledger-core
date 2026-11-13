@@ -1,0 +1,27 @@
+-- Q1b Same answer as Q1a, rewritten as one LIMIT-1 index probe per liquidity provider (LATERAL "loose index scan")
+SELECT lp.lp_id, r.bid, r.ask, r.captured_at
+FROM fx.liquidity_providers lp
+CROSS JOIN LATERAL (
+    SELECT bid, ask, captured_at FROM fx.fx_rates
+    WHERE base_ccy = 'USD' AND quote_ccy = 'NGN' AND lp_id = lp.lp_id
+    ORDER BY captured_at DESC LIMIT 1
+) r
+ORDER BY lp.lp_id;
+
+Nested Loop  (cost=39066.69..117211.89 rows=3 width=26) (actual time=371.789..876.993 rows=3 loops=1)
+  Buffers: shared hit=1922 read=38454
+  ->  Index Only Scan using liquidity_providers_pkey on liquidity_providers lp  (cost=0.13..12.18 rows=3 width=2) (actual time=0.014..0.037 rows=3 loops=1)
+        Heap Fetches: 3
+        Buffers: shared hit=2
+  ->  Limit  (cost=39066.56..39066.56 rows=1 width=24) (actual time=292.311..292.312 rows=1 loops=3)
+        Buffers: shared hit=1920 read=38454
+        ->  Sort  (cost=39066.56..39270.84 rows=81712 width=24) (actual time=292.306..292.306 rows=1 loops=3)
+              Sort Key: fx_rates.captured_at DESC
+              Sort Method: top-N heapsort  Memory: 25kB
+              Buffers: shared hit=1920 read=38454
+              ->  Seq Scan on fx_rates  (cost=0.00..38658.00 rows=81712 width=24) (actual time=59.308..264.744 rows=80000 loops=3)
+                    Filter: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = lp.lp_id))
+                    Rows Removed by Filter: 1360000
+                    Buffers: shared hit=1920 read=38454
+Planning Time: 0.168 ms
+Execution Time: 877.030 ms

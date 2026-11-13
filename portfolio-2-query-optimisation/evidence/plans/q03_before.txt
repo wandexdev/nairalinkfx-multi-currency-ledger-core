@@ -1,0 +1,29 @@
+-- Q3 A customer's FX orders in the last 60 days (order-history screen / support lookup)
+SELECT o.order_id, o.placed_at, w.currency_code AS bought, o.sell_amount, o.buy_amount, o.rate_applied, o.fee_amount
+FROM fx.fx_orders o
+JOIN fx.wallets w ON w.wallet_id = o.buy_wallet
+WHERE o.customer_id = 777 AND o.placed_at >= now() - interval '60 days'
+ORDER BY o.placed_at DESC;
+
+Gather Merge  (cost=5201.60..5201.83 rows=2 width=48) (actual time=23.055..26.141 rows=1 loops=1)
+  Workers Planned: 1
+  Workers Launched: 1
+  Buffers: shared hit=2432
+  ->  Sort  (cost=4201.59..4201.59 rows=2 width=48) (actual time=18.063..18.066 rows=0 loops=2)
+        Sort Key: o.placed_at DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=2432
+        Worker 0:  Sort Method: quicksort  Memory: 25kB
+        ->  Nested Loop  (cost=0.42..4201.58 rows=2 width=48) (actual time=7.276..18.030 rows=0 loops=2)
+              Buffers: shared hit=2424
+              ->  Parallel Seq Scan on fx_orders o  (cost=0.00..4184.71 rows=2 width=52) (actual time=7.265..18.017 rows=0 loops=2)
+                    Filter: ((customer_id = 777) AND (placed_at >= (now() - '60 days'::interval)))
+                    Rows Removed by Filter: 75000
+                    Buffers: shared hit=2420
+              ->  Index Scan using wallets_pkey on wallets w  (cost=0.42..8.44 rows=1 width=12) (actual time=0.015..0.015 rows=1 loops=1)
+                    Index Cond: (wallet_id = o.buy_wallet)
+                    Buffers: shared hit=4
+Planning:
+  Buffers: shared hit=11
+Planning Time: 0.307 ms
+Execution Time: 26.179 ms
