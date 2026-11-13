@@ -1,0 +1,129 @@
+﻿-- Portfolio 1 evidence: every test below is EXPECTED to be rejected (or succeed where noted).
+-- Run: psql -d nairalink -f 03_constraint_tests.sql   (errors are expected; ON_ERROR_STOP is off)
+SET search_path = fx, public;
+SET
+\echo '--- Setup: one customer + two wallets (house account is customer 1) ---'
+--- Setup: one customer + two wallets (house account is customer 1) ---
+INSERT INTO customers(email,phone,full_name,kyc_tier) VALUES ('house@nairalink.example','+2340000000000','NairaLink House Float',3);
+INSERT 0 1
+INSERT INTO customers(email,phone,full_name,kyc_tier) VALUES ('ada@example.com','+2348011111111','Ada Obi',1);
+INSERT 0 1
+INSERT INTO wallets(customer_id,currency_code,balance) VALUES (2,'NGN',100000),(2,'USD',0);
+INSERT 0 2
+INSERT INTO wallets(customer_id,currency_code,balance,wallet_type) VALUES (1,'NGN',1000000000,'SETTLEMENT');
+INSERT 0 1
+\echo '--- T1 duplicate email (UNIQUE) -> expect ERROR ---'
+--- T1 duplicate email (UNIQUE) -> expect ERROR ---
+INSERT INTO customers(email,phone,full_name) VALUES ('ada@example.com','+2348022222222','Dup');
+psql : psql:portfolio-1-database-design/03_constraint_tests.sql:11: ERROR:  duplicate key value violates unique constraint "customers_email_key"
+At line:1 char:1
++ psql -d nairalink -a -f .\portfolio-1-database-design\03_constraint_t ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql:portfolio-...mers_email_key":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+DETAIL:  Key (email)=(ada@example.com) already exists.
+\echo '--- T2 invalid email format (CHECK) -> expect ERROR ---'
+--- T2 invalid email format (CHECK) -> expect ERROR ---
+INSERT INTO customers(email,phone,full_name) VALUES ('not-an-email','+2348033333333','Bad Email');
+psql:portfolio-1-database-design/03_constraint_tests.sql:13: ERROR:  new row for relation "customers" violates check constraint 
+"chk_email_format"
+DETAIL:  Failing row contains (4, not-an-email, +2348033333333, Bad Email, NG, 0, ACTIVE, 2026-11-13 15:40:24.56474+00).
+\echo '--- T3 unknown KYC tier (FK) -> expect ERROR ---'
+--- T3 unknown KYC tier (FK) -> expect ERROR ---
+INSERT INTO customers(email,phone,full_name,kyc_tier) VALUES ('x@example.com','+2348044444444','X',9);
+psql:portfolio-1-database-design/03_constraint_tests.sql:15: ERROR:  insert or update on table "customers" violates foreign key constraint 
+"customers_kyc_tier_fkey"
+DETAIL:  Key (kyc_tier)=(9) is not present in table "kyc_tiers".
+\echo '--- T4 second NGN wallet for same customer (UNIQUE customer+currency) -> expect ERROR ---'
+--- T4 second NGN wallet for same customer (UNIQUE customer+currency) -> expect ERROR ---
+INSERT INTO wallets(customer_id,currency_code) VALUES (2,'NGN');
+\echo '--- T5 overdraft: customer balance would go negative (chk_no_overdraft) -> expect ERROR ---'
+--- T5 overdraft: customer balance would go negative (chk_no_overdraft) -> expect ERROR ---
+UPDATE wallets SET balance = balance - 999999 WHERE wallet_id = 1;
+psql:portfolio-1-database-design/03_constraint_tests.sql:17: ERROR:  duplicate key value violates unique constraint "uq_wallet_per_currency"
+DETAIL:  Key (customer_id, currency_code)=(2, NGN) already exists.
+psql:portfolio-1-database-design/03_constraint_tests.sql:19: ERROR:  new row for relation "wallets" violates check constraint "chk_no_overdraft"
+DETAIL:  Failing row contains (1, 2, NGN, CUSTOMER, -899999.0000, 0.0000, 1, 2026-11-13 15:40:24.547796+00).
+\echo '--- T6 held amount > balance (chk_hold_le_balance) -> expect ERROR ---'
+--- T6 held amount > balance (chk_hold_le_balance) -> expect ERROR ---
+UPDATE wallets SET held_amount = 200000 WHERE wallet_id = 1;
+psql:portfolio-1-database-design/03_constraint_tests.sql:21: ERROR:  new row for relation "wallets" violates check constraint 
+"chk_hold_le_balance"
+DETAIL:  Failing row contains (1, 2, NGN, CUSTOMER, 100000.0000, 200000.0000, 0, 2026-11-13 15:40:24.547796+00).
+\echo '--- T7 rate with ask < bid (CHECK) -> expect ERROR ---'
+--- T7 rate with ask < bid (CHECK) -> expect ERROR ---
+INSERT INTO fx_rates(base_ccy,quote_ccy,bid,ask,lp_id,captured_at) VALUES ('USD','NGN',1500,1490,1,now());
+psql:portfolio-1-database-design/03_constraint_tests.sql:23: ERROR:  new row for relation "fx_rates" violates check constraint 
+"chk_spread_valid"
+\echo '--- T8 pair with same base/quote -> expect ERROR ---'
+DETAIL:  Failing row contains (1, USD, NGN, 1500.000000, 1490.000000, 1, 2026-11-13 15:40:24.582192+00).
+--- T8 pair with same base/quote -> expect ERROR ---
+INSERT INTO fx_rates(base_ccy,quote_ccy,bid,ask,lp_id,captured_at) VALUES ('USD','USD',1,1,1,now());
+psql:portfolio-1-database-design/03_constraint_tests.sql:25: ERROR:  new row for relation "fx_rates" violates check constraint 
+"chk_pair_distinct"
+DETAIL:  Failing row contains (2, USD, USD, 1.000000, 1.000000, 1, 2026-11-13 15:40:24.584576+00).
+\echo '--- T9 delete customer who owns wallets (ON DELETE RESTRICT) -> expect ERROR ---'
+--- T9 delete customer who owns wallets (ON DELETE RESTRICT) -> expect ERROR ---
+DELETE FROM customers WHERE customer_id = 2;
+psql:portfolio-1-database-design/03_constraint_tests.sql:27: ERROR:  update or delete on table "customers" violates foreign key constraint 
+"wallets_customer_id_fkey" on table "wallets"
+DETAIL:  Key (customer_id)=(2) is still referenced from table "wallets".
+\echo '--- T10 UNBALANCED ledger (deferred trigger fires at COMMIT) -> expect ERROR ---'
+--- T10 UNBALANCED ledger (deferred trigger fires at COMMIT) -> expect ERROR ---
+BEGIN;
+BEGIN
+INSERT INTO transactions(reference,txn_type,customer_id,status) VALUES ('T10-BAD','FUNDING',2,'SUCCESS');
+INSERT 0 1
+INSERT INTO ledger_entries(txn_id,wallet_id,direction,amount,balance_after)
+   SELECT currval(pg_get_serial_sequence('fx.transactions','txn_id')),1,'CR',500,100500;  -- no matching DR
+INSERT 0 1
+COMMIT;   -- <- rejected here
+psql:portfolio-1-database-design/03_constraint_tests.sql:33: ERROR:  Unbalanced ledger for txn 1 in NGN: DR-CR = -500.0000
+CONTEXT:  PL/pgSQL function fn_ledger_balanced() line 12 at RAISE
+\echo '--- T10b VALID balanced funding (house DR / customer CR) -> expect COMMIT ok ---'
+--- T10b VALID balanced funding (house DR / customer CR) -> expect COMMIT ok ---
+BEGIN;
+BEGIN
+INSERT INTO transactions(reference,txn_type,customer_id,status) VALUES ('T10-GOOD','FUNDING',2,'SUCCESS');
+INSERT 0 1
+INSERT INTO ledger_entries(txn_id,wallet_id,direction,amount,balance_after)
+   SELECT currval(pg_get_serial_sequence('fx.transactions','txn_id')),3,'DR',500,999999500;
+INSERT 0 1
+INSERT INTO ledger_entries(txn_id,wallet_id,direction,amount,balance_after)
+   SELECT currval(pg_get_serial_sequence('fx.transactions','txn_id')),1,'CR',500,100500;
+INSERT 0 1
+COMMIT;
+COMMIT
+SELECT txn_id, wallet_id, direction, amount FROM ledger_entries ORDER BY entry_id;
+ txn_id | wallet_id | direction |  amount  
+--------+-----------+-----------+----------
+      2 |         3 | DR        | 500.0000
+      2 |         1 | CR        | 500.0000
+(2 rows)
+
+\echo '--- T11 UPDATE on immutable ledger -> expect ERROR ---'
+--- T11 UPDATE on immutable ledger -> expect ERROR ---
+UPDATE ledger_entries SET amount = 1;
+psql:portfolio-1-database-design/03_constraint_tests.sql:44: ERROR:  ledger_entries is append-only (UPDATE blocked); post a REVERSAL instead
+CONTEXT:  PL/pgSQL function fn_ledger_immutable() line 3 at RAISE
+\echo '--- T12 audit trigger: change KYC tier, then read audit_log -> expect 1 row ---'
+--- T12 audit trigger: change KYC tier, then read audit_log -> expect 1 row ---
+UPDATE customers SET kyc_tier = 2 WHERE customer_id = 2;
+UPDATE 1
+SELECT table_name, operation, old_data->>'kyc_tier' AS old_tier, new_data->>'kyc_tier' AS new_tier FROM audit_log;
+ table_name | operation | old_tier | new_tier 
+------------+-----------+----------+----------
+ customers  | U         | 1        | 2
+(1 row)
+
+\echo '--- T13 wallet version bump trigger (optimistic locking) -> version 0 -> 1 ---'
+--- T13 wallet version bump trigger (optimistic locking) -> version 0 -> 1 ---
+UPDATE wallets SET balance = balance + 10 WHERE wallet_id = 1;
+UPDATE 1
+SELECT wallet_id, balance, version FROM wallets WHERE wallet_id = 1;
+ wallet_id |   balance   | version 
+-----------+-------------+---------
+         1 | 100010.0000 |       1
+(1 row)
+
