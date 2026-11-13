@@ -1,0 +1,25 @@
+-- Q1b Same answer as Q1a, rewritten as one LIMIT-1 index probe per liquidity provider (LATERAL "loose index scan")
+SELECT lp.lp_id, r.bid, r.ask, r.captured_at
+FROM fx.liquidity_providers lp
+CROSS JOIN LATERAL (
+    SELECT bid, ask, captured_at FROM fx.fx_rates
+    WHERE base_ccy = 'USD' AND quote_ccy = 'NGN' AND lp_id = lp.lp_id
+    ORDER BY captured_at DESC LIMIT 1
+) r
+ORDER BY lp.lp_id;
+
+Sort  (cost=4.58..4.58 rows=3 width=26) (actual time=0.117..0.119 rows=3 loops=1)
+  Sort Key: lp.lp_id
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=13
+  ->  Nested Loop  (cost=0.43..4.55 rows=3 width=26) (actual time=0.051..0.110 rows=3 loops=1)
+        Buffers: shared hit=13
+        ->  Seq Scan on liquidity_providers lp  (cost=0.00..1.03 rows=3 width=2) (actual time=0.006..0.007 rows=3 loops=1)
+              Buffers: shared hit=1
+        ->  Limit  (cost=0.43..1.16 rows=1 width=24) (actual time=0.033..0.033 rows=1 loops=3)
+              Buffers: shared hit=12
+              ->  Index Scan using idx_fx_rates_pair_lp_time on fx_rates  (cost=0.43..56651.09 rows=76944 width=24) (actual time=0.032..0.032 rows=1 loops=3)
+                    Index Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = lp.lp_id))
+                    Buffers: shared hit=12
+Planning Time: 0.201 ms
+Execution Time: 0.144 ms

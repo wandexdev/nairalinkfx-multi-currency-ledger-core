@@ -1,0 +1,47 @@
+-- Q8 Compliance: customers who converted >= 80% of their tier's daily NGN limit on any single day, last 30 days
+SELECT c.customer_id, c.kyc_tier, d.day, d.ngn_sold, k.daily_limit_ngn
+FROM (SELECT customer_id, date_trunc('day', placed_at)::date AS day, sum(sell_amount) AS ngn_sold
+        FROM fx.fx_orders WHERE placed_at >= now() - interval '30 days'
+        GROUP BY 1, 2) d
+JOIN fx.customers c USING (customer_id)
+JOIN fx.kyc_tiers k ON k.tier = c.kyc_tier
+WHERE d.ngn_sold >= 0.8 * k.daily_limit_ngn
+ORDER BY d.ngn_sold DESC
+LIMIT 20;
+
+Limit  (cost=3511.89..3511.94 rows=20 width=50) (actual time=210.139..210.148 rows=20 loops=1)
+  Buffers: shared hit=478, temp read=44 written=112
+  ->  Sort  (cost=3511.89..3533.85 rows=8784 width=50) (actual time=210.136..210.143 rows=20 loops=1)
+        Sort Key: (sum(fx_orders.sell_amount)) DESC
+        Sort Method: top-N heapsort  Memory: 27kB
+        Buffers: shared hit=478, temp read=44 written=112
+        ->  Hash Join  (cost=2379.74..3278.15 rows=8784 width=50) (actual time=115.068..207.666 rows=2832 loops=1)
+              Hash Cond: (c.kyc_tier = k.tier)
+              Join Filter: ((sum(fx_orders.sell_amount)) >= (0.8 * k.daily_limit_ngn))
+              Rows Removed by Join Filter: 24686
+              Buffers: shared hit=478, temp read=44 written=112
+              ->  Hash Join  (cost=2378.65..3172.48 rows=26351 width=46) (actual time=114.974..183.184 rows=27518 loops=1)
+                    Hash Cond: (fx_orders.customer_id = c.customer_id)
+                    Buffers: shared hit=477, temp read=44 written=112
+                    ->  HashAggregate  (cost=1656.62..2117.77 rows=26351 width=44) (actual time=97.570..140.389 rows=27518 loops=1)
+                          Group Key: fx_orders.customer_id, (date_trunc('day'::text, fx_orders.placed_at))::date
+                          Batches: 5  Memory Usage: 8241kB  Disk Usage: 664kB
+                          Buffers: shared hit=205, temp read=44 written=112
+                          ->  Index Only Scan using idx_orders_time_cover on fx_orders  (cost=0.42..1445.58 rows=28140 width=20) (actual time=0.062..33.056 rows=28169 loops=1)
+                                Index Cond: (placed_at >= (now() - '30 days'::interval))
+                                Heap Fetches: 0
+                                Buffers: shared hit=205
+                    ->  Hash  (cost=472.01..472.01 rows=20001 width=10) (actual time=17.380..17.381 rows=20001 loops=1)
+                          Buckets: 32768  Batches: 1  Memory Usage: 1077kB
+                          Buffers: shared hit=272
+                          ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=10) (actual time=0.006..11.653 rows=20001 loops=1)
+                                Buffers: shared hit=272
+              ->  Hash  (cost=1.04..1.04 rows=4 width=6) (actual time=0.018..0.019 rows=4 loops=1)
+                    Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                    Buffers: shared hit=1
+                    ->  Seq Scan on kyc_tiers k  (cost=0.00..1.04 rows=4 width=6) (actual time=0.012..0.014 rows=4 loops=1)
+                          Buffers: shared hit=1
+Planning:
+  Buffers: shared hit=4
+Planning Time: 0.452 ms
+Execution Time: 211.832 ms

@@ -1,0 +1,20 @@
+-- AFTER_ONLY
+-- Q4b Same dashboard answer read from the pre-aggregated materialised view (needs 06_materialised_view.sql)
+SELECT day, bought_ccy, orders, ngn_volume, fee_revenue
+FROM fx.mv_daily_volume
+WHERE day >= (now() - interval '30 days')::date
+ORDER BY day DESC, bought_ccy;
+
+Sort  (cost=14.04..14.27 rows=95 width=33) (actual time=0.046..0.050 rows=93 loops=1)
+  Sort Key: day DESC, bought_ccy
+  Sort Method: quicksort  Memory: 30kB
+  Buffers: shared hit=6
+  ->  Bitmap Heap Scan on mv_daily_volume  (cost=5.02..10.92 rows=95 width=33) (actual time=0.013..0.023 rows=93 loops=1)
+        Recheck Cond: (day >= ((now() - '30 days'::interval))::date)
+        Heap Blocks: exact=4
+        Buffers: shared hit=6
+        ->  Bitmap Index Scan on mv_daily_volume_day_bought_ccy_idx  (cost=0.00..4.99 rows=95 width=0) (actual time=0.009..0.009 rows=93 loops=1)
+              Index Cond: (day >= ((now() - '30 days'::interval))::date)
+              Buffers: shared hit=2
+Planning Time: 0.047 ms
+Execution Time: 0.064 ms

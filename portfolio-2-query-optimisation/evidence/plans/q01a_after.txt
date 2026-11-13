@@ -1,0 +1,21 @@
+-- Q1a (naive version) Latest USD/NGN quote from each liquidity provider (hot path: every conversion needs this)
+SELECT DISTINCT ON (lp_id) lp_id, bid, ask, captured_at
+FROM fx.fx_rates
+WHERE base_ccy = 'USD' AND quote_ccy = 'NGN'
+ORDER BY lp_id, captured_at DESC;
+
+Unique  (cost=49953.01..51107.17 rows=3 width=26) (actual time=440.862..536.316 rows=3 loops=1)
+  Buffers: shared hit=3431, temp read=1237 written=1241
+  ->  Sort  (cost=49953.01..50530.09 rows=230832 width=26) (actual time=440.859..500.522 rows=240000 loops=1)
+        Sort Key: lp_id, captured_at DESC
+        Sort Method: external merge  Disk: 9896kB
+        Buffers: shared hit=3431, temp read=1237 written=1241
+        ->  Bitmap Heap Scan on fx_rates  (cost=6946.46..23866.94 rows=230832 width=26) (actual time=25.820..77.605 rows=240000 loops=1)
+              Recheck Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar))
+              Heap Blocks: exact=2246
+              Buffers: shared hit=3431
+              ->  Bitmap Index Scan on idx_fx_rates_pair_lp_time  (cost=0.00..6888.75 rows=230832 width=0) (actual time=25.425..25.426 rows=240000 loops=1)
+                    Index Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar))
+                    Buffers: shared hit=1185
+Planning Time: 0.088 ms
+Execution Time: 540.246 ms

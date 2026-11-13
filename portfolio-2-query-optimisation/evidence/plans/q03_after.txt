@@ -1,0 +1,19 @@
+-- Q3 A customer's FX orders in the last 60 days (order-history screen / support lookup)
+SELECT o.order_id, o.placed_at, w.currency_code AS bought, o.sell_amount, o.buy_amount, o.rate_applied, o.fee_amount
+FROM fx.fx_orders o
+JOIN fx.wallets w ON w.wallet_id = o.buy_wallet
+WHERE o.customer_id = 777 AND o.placed_at >= now() - interval '60 days'
+ORDER BY o.placed_at DESC;
+
+Nested Loop  (cost=0.84..37.29 rows=3 width=48) (actual time=0.016..0.017 rows=1 loops=1)
+  Buffers: shared hit=8
+  ->  Index Scan using idx_orders_customer_time on fx_orders o  (cost=0.42..11.99 rows=3 width=52) (actual time=0.010..0.010 rows=1 loops=1)
+        Index Cond: ((customer_id = 777) AND (placed_at >= (now() - '60 days'::interval)))
+        Buffers: shared hit=4
+  ->  Index Scan using wallets_pkey on wallets w  (cost=0.42..8.44 rows=1 width=12) (actual time=0.004..0.004 rows=1 loops=1)
+        Index Cond: (wallet_id = o.buy_wallet)
+        Buffers: shared hit=4
+Planning:
+  Buffers: shared hit=8
+Planning Time: 0.186 ms
+Execution Time: 0.033 ms

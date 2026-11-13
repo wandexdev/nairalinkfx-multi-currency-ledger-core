@@ -1,0 +1,157 @@
+{
+ "q01a": {
+  "median_ms": 601.75,
+  "runs_ms": [
+   2193.694,
+   956.756,
+   601.745,
+   491.896,
+   540.246
+  ],
+  "scans": [
+   "Bitmap Heap Scan on fx_rates",
+   "Index Scan on idx_fx_rates_pair_lp_time"
+  ]
+ },
+ "q01b": {
+  "median_ms": 0.14,
+  "runs_ms": [
+   0.49,
+   0.171,
+   0.094,
+   0.124,
+   0.144
+  ],
+  "scans": [
+   "Index Scan on fx_rates",
+   "Seq Scan on liquidity_providers"
+  ]
+ },
+ "q02": {
+  "median_ms": 0.14,
+  "runs_ms": [
+   2.424,
+   0.146,
+   0.145,
+   0.13,
+   0.13
+  ],
+  "scans": [
+   "Index Scan on ledger_entries",
+   "Index Scan on transactions",
+   "Index Scan on wallets"
+  ]
+ },
+ "q03": {
+  "median_ms": 0.05,
+  "runs_ms": [
+   0.276,
+   0.058,
+   0.051,
+   0.039,
+   0.033
+  ],
+  "scans": [
+   "Index Scan on fx_orders",
+   "Index Scan on wallets"
+  ]
+ },
+ "q04a": {
+  "median_ms": 179.53,
+  "runs_ms": [
+   208.448,
+   190.742,
+   179.527,
+   108.478,
+   85.058
+  ],
+  "scans": [
+   "Index Only Scan on fx_orders",
+   "Seq Scan on wallets"
+  ]
+ },
+ "q04b": {
+  "median_ms": 0.07,
+  "runs_ms": [
+   0.207,
+   0.112,
+   0.068,
+   0.065,
+   0.064
+  ],
+  "scans": [
+   "Bitmap Heap Scan on mv_daily_volume",
+   "Index Scan on mv_daily_volume_day_bought_ccy_idx"
+  ]
+ },
+ "q05": {
+  "median_ms": 175.83,
+  "runs_ms": [
+   261.26,
+   163.974,
+   175.828,
+   168.199,
+   178.864
+  ],
+  "scans": [
+   "Index Only Scan on fx_orders",
+   "Seq Scan on customers"
+  ]
+ },
+ "q06": {
+  "median_ms": 36.45,
+  "runs_ms": [
+   36.162,
+   32.929,
+   40.956,
+   36.45,
+   36.592
+  ],
+  "scans": [
+   "Bitmap Heap Scan on fx_rates",
+   "Index Scan on idx_fx_rates_pair_lp_time"
+  ]
+ },
+ "q07": {
+  "median_ms": 705.59,
+  "runs_ms": [
+   792.481,
+   705.589,
+   378.563,
+   665.755,
+   783.86
+  ],
+  "scans": [
+   "Parallel Seq Scan on ledger_entries",
+   "Seq Scan on wallets"
+  ]
+ },
+ "q08": {
+  "median_ms": 221.85,
+  "runs_ms": [
+   233.55,
+   209.928,
+   221.855,
+   419.748,
+   211.832
+  ],
+  "scans": [
+   "Index Only Scan on fx_orders",
+   "Seq Scan on customers",
+   "Seq Scan on kyc_tiers"
+  ]
+ },
+ "q09": {
+  "median_ms": 0.04,
+  "runs_ms": [
+   11.785,
+   0.059,
+   0.045,
+   0.039,
+   0.038
+  ],
+  "scans": [
+   "Index Scan on transactions"
+  ]
+ }
+}

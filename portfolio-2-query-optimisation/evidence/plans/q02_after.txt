@@ -1,0 +1,26 @@
+-- Q2 Mobile-app wallet statement: last 20 ledger lines for one customer's NGN wallet
+SELECT le.entry_id, le.created_at, t.txn_type, le.direction, le.amount, le.balance_after
+FROM fx.ledger_entries le
+JOIN fx.transactions t USING (txn_id)
+WHERE le.wallet_id = (SELECT wallet_id FROM fx.wallets WHERE customer_id = 777 AND currency_code = 'NGN')
+ORDER BY le.created_at DESC
+LIMIT 20;
+
+Limit  (cost=9.28..214.43 rows=20 width=48) (actual time=0.041..0.102 rows=11 loops=1)
+  Buffers: shared hit=52
+  InitPlan 1 (returns $0)
+    ->  Index Scan using uq_wallet_per_currency on wallets  (cost=0.42..8.44 rows=1 width=8) (actual time=0.018..0.019 rows=1 loops=1)
+          Index Cond: ((customer_id = 777) AND (currency_code = 'NGN'::bpchar))
+          Buffers: shared hit=4
+  ->  Nested Loop  (cost=0.84..359.85 rows=35 width=48) (actual time=0.039..0.098 rows=11 loops=1)
+        Buffers: shared hit=52
+        ->  Index Scan using idx_ledger_wallet_time on ledger_entries le  (cost=0.42..68.54 rows=35 width=44) (actual time=0.031..0.034 rows=11 loops=1)
+              Index Cond: (wallet_id = $0)
+              Buffers: shared hit=8
+        ->  Index Scan using transactions_pkey on transactions t  (cost=0.42..8.32 rows=1 width=20) (actual time=0.005..0.005 rows=1 loops=11)
+              Index Cond: (txn_id = le.txn_id)
+              Buffers: shared hit=44
+Planning:
+  Buffers: shared hit=16
+Planning Time: 0.378 ms
+Execution Time: 0.130 ms
