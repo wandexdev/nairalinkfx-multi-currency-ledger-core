@@ -1,0 +1,4 @@
+﻿customer_profiles 20000
+rate_buckets 8624
+trade_events 210000
+price_alerts 30000
