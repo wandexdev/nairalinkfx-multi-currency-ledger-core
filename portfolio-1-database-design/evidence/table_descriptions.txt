@@ -1,0 +1,419 @@
+﻿                                                               Table "fx.audit_log"
+   Column   |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ audit_id   | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ table_name | text                     |           | not null |                              | extended |             |              | 
+ operation  | character(1)             |           | not null |                              | extended |             |              | 
+ row_pk     | text                     |           | not null |                              | extended |             |              | 
+ old_data   | jsonb                    |           |          |                              | extended |             |              | 
+ new_data   | jsonb                    |           |          |                              | extended |             |              | 
+ changed_by | text                     |           | not null | CURRENT_USER                 | extended |             |              | 
+ changed_at | timestamp with time zone |           | not null | now()                        | plain    |             |              | 
+Indexes:
+    "audit_log_pkey" PRIMARY KEY, btree (audit_id)
+Check constraints:
+    "audit_log_operation_check" CHECK (operation = ANY (ARRAY['I'::bpchar, 'U'::bpchar, 'D'::bpchar]))
+Access method: heap
+
+                     Sequence "fx.audit_log_audit_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.audit_log.audit_id
+
+                   Index "fx.audit_log_pkey"
+  Column  |  Type  | Key? | Definition | Storage | Stats target 
+----------+--------+------+------------+---------+--------------
+ audit_id | bigint | yes  | audit_id   | plain   | 
+primary key, btree, for table "fx.audit_log"
+
+                                                    Table "fx.currencies"
+    Column     |         Type          | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
+---------------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+ currency_code | character(3)          |           | not null |         | extended |             |              | 
+ currency_name | character varying(60) |           | not null |         | extended |             |              | 
+ decimals      | smallint              |           | not null | 2       | plain    |             |              | 
+ is_active     | boolean               |           | not null | true    | plain    |             |              | 
+Indexes:
+    "currencies_pkey" PRIMARY KEY, btree (currency_code)
+Check constraints:
+    "currencies_decimals_check" CHECK (decimals >= 0 AND decimals <= 4)
+Referenced by:
+    TABLE "fx.fx_rates" CONSTRAINT "fx_rates_base_ccy_fkey" FOREIGN KEY (base_ccy) REFERENCES fx.currencies(currency_code)
+    TABLE "fx.fx_rates" CONSTRAINT "fx_rates_quote_ccy_fkey" FOREIGN KEY (quote_ccy) REFERENCES fx.currencies(currency_code)
+    TABLE "fx.payments" CONSTRAINT "payments_currency_code_fkey" FOREIGN KEY (currency_code) REFERENCES fx.currencies(currency_code)
+    TABLE "fx.wallets" CONSTRAINT "wallets_currency_code_fkey" FOREIGN KEY (currency_code) REFERENCES fx.currencies(currency_code)
+Access method: heap
+
+                          Index "fx.currencies_pkey"
+    Column     |     Type     | Key? |  Definition   | Storage  | Stats target 
+---------------+--------------+------+---------------+----------+--------------
+ currency_code | character(3) | yes  | currency_code | extended | 
+primary key, btree, for table "fx.currencies"
+
+                                                                Table "fx.customers"
+    Column    |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+--------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ customer_id  | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ email        | character varying(120)   |           | not null |                              | extended |             |              | 
+ phone        | character varying(20)    |           | not null |                              | extended |             |              | 
+ full_name    | character varying(120)   |           | not null |                              | extended |             |              | 
+ country_code | character(2)             |           | not null | 'NG'::bpchar                 | extended |             |              | 
+ kyc_tier     | smallint                 |           | not null | 0                            | plain    |             |              | 
+ status       | character varying(12)    |           | not null | 'ACTIVE'::character varying  | extended |             |              | 
+ created_at   | timestamp with time zone |           | not null | now()                        | plain    |             |              | 
+Indexes:
+    "customers_pkey" PRIMARY KEY, btree (customer_id)
+    "customers_email_key" UNIQUE CONSTRAINT, btree (email)
+    "customers_phone_key" UNIQUE CONSTRAINT, btree (phone)
+Check constraints:
+    "chk_email_format" CHECK (email::text ~~ '%_@_%.__%'::text)
+    "customers_status_check" CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'SUSPENDED'::character varying, 'CLOSED'::character varying]::text[]))
+Foreign-key constraints:
+    "customers_kyc_tier_fkey" FOREIGN KEY (kyc_tier) REFERENCES fx.kyc_tiers(tier)
+Referenced by:
+    TABLE "fx.fx_orders" CONSTRAINT "fx_orders_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES fx.customers(customer_id)
+    TABLE "fx.transactions" CONSTRAINT "transactions_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES fx.customers(customer_id)
+    TABLE "fx.wallets" CONSTRAINT "wallets_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES fx.customers(customer_id) ON DELETE RESTRICT
+Triggers:
+    trg_audit_customers AFTER UPDATE OF kyc_tier, status ON fx.customers FOR EACH ROW EXECUTE FUNCTION fx.fn_audit('customer_id')
+Access method: heap
+
+                   Sequence "fx.customers_customer_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.customers.customer_id
+
+                        Index "fx.customers_email_key"
+ Column |          Type          | Key? | Definition | Storage  | Stats target 
+--------+------------------------+------+------------+----------+--------------
+ email  | character varying(120) | yes  | email      | extended | 
+unique, btree, for table "fx.customers"
+
+                        Index "fx.customers_phone_key"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ phone  | character varying(20) | yes  | phone      | extended | 
+unique, btree, for table "fx.customers"
+
+                     Index "fx.customers_pkey"
+   Column    |  Type  | Key? | Definition  | Storage | Stats target 
+-------------+--------+------+-------------+---------+--------------
+ customer_id | bigint | yes  | customer_id | plain   | 
+primary key, btree, for table "fx.customers"
+
+                                                                Table "fx.fx_orders"
+    Column    |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+--------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ order_id     | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ txn_id       | bigint                   |           | not null |                              | plain    |             |              | 
+ customer_id  | bigint                   |           | not null |                              | plain    |             |              | 
+ sell_wallet  | bigint                   |           | not null |                              | plain    |             |              | 
+ buy_wallet   | bigint                   |           | not null |                              | plain    |             |              | 
+ order_type   | character varying(7)     |           | not null | 'MARKET'::character varying  | extended |             |              | 
+ sell_amount  | numeric(20,4)            |           | not null |                              | main     |             |              | 
+ buy_amount   | numeric(20,4)            |           | not null |                              | main     |             |              | 
+ rate_applied | numeric(18,6)            |           | not null |                              | main     |             |              | 
+ fee_amount   | numeric(20,4)            |           | not null | 0                            | main     |             |              | 
+ lp_id        | smallint                 |           |          |                              | plain    |             |              | 
+ status       | character varying(10)    |           | not null | 'FILLED'::character varying  | extended |             |              | 
+ placed_at    | timestamp with time zone |           | not null | now()                        | plain    |             |              | 
+Indexes:
+    "fx_orders_pkey" PRIMARY KEY, btree (order_id)
+    "fx_orders_txn_id_key" UNIQUE CONSTRAINT, btree (txn_id)
+Check constraints:
+    "chk_distinct_wallets" CHECK (sell_wallet <> buy_wallet)
+    "fx_orders_buy_amount_check" CHECK (buy_amount > 0::numeric)
+    "fx_orders_fee_amount_check" CHECK (fee_amount >= 0::numeric)
+    "fx_orders_order_type_check" CHECK (order_type::text = ANY (ARRAY['MARKET'::character varying, 'LIMIT'::character varying]::text[]))
+    "fx_orders_rate_applied_check" CHECK (rate_applied > 0::numeric)
+    "fx_orders_sell_amount_check" CHECK (sell_amount > 0::numeric)
+    "fx_orders_status_check" CHECK (status::text = ANY (ARRAY['OPEN'::character varying, 'FILLED'::character varying, 'CANCELLED'::character varying, 'REJECTED'::character varying]::text[]))
+Foreign-key constraints:
+    "fx_orders_buy_wallet_fkey" FOREIGN KEY (buy_wallet) REFERENCES fx.wallets(wallet_id)
+    "fx_orders_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES fx.customers(customer_id)
+    "fx_orders_lp_id_fkey" FOREIGN KEY (lp_id) REFERENCES fx.liquidity_providers(lp_id)
+    "fx_orders_sell_wallet_fkey" FOREIGN KEY (sell_wallet) REFERENCES fx.wallets(wallet_id)
+    "fx_orders_txn_id_fkey" FOREIGN KEY (txn_id) REFERENCES fx.transactions(txn_id)
+Access method: heap
+
+                     Sequence "fx.fx_orders_order_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.fx_orders.order_id
+
+                   Index "fx.fx_orders_pkey"
+  Column  |  Type  | Key? | Definition | Storage | Stats target 
+----------+--------+------+------------+---------+--------------
+ order_id | bigint | yes  | order_id   | plain   | 
+primary key, btree, for table "fx.fx_orders"
+
+               Index "fx.fx_orders_txn_id_key"
+ Column |  Type  | Key? | Definition | Storage | Stats target 
+--------+--------+------+------------+---------+--------------
+ txn_id | bigint | yes  | txn_id     | plain   | 
+unique, btree, for table "fx.fx_orders"
+
+                                                                Table "fx.fx_rates"
+   Column    |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+-------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ rate_id     | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ base_ccy    | character(3)             |           | not null |                              | extended |             |              | 
+ quote_ccy   | character(3)             |           | not null |                              | extended |             |              | 
+ bid         | numeric(18,6)            |           | not null |                              | main     |             |              | 
+ ask         | numeric(18,6)            |           | not null |                              | main     |             |              | 
+ lp_id       | smallint                 |           | not null |                              | plain    |             |              | 
+ captured_at | timestamp with time zone |           | not null |                              | plain    |             |              | 
+Indexes:
+    "fx_rates_pkey" PRIMARY KEY, btree (rate_id)
+Check constraints:
+    "chk_pair_distinct" CHECK (base_ccy <> quote_ccy)
+    "chk_spread_valid" CHECK (ask >= bid)
+    "fx_rates_bid_check" CHECK (bid > 0::numeric)
+Foreign-key constraints:
+    "fx_rates_base_ccy_fkey" FOREIGN KEY (base_ccy) REFERENCES fx.currencies(currency_code)
+    "fx_rates_lp_id_fkey" FOREIGN KEY (lp_id) REFERENCES fx.liquidity_providers(lp_id)
+    "fx_rates_quote_ccy_fkey" FOREIGN KEY (quote_ccy) REFERENCES fx.currencies(currency_code)
+Access method: heap
+
+                   Index "fx.fx_rates_pkey"
+ Column  |  Type  | Key? | Definition | Storage | Stats target 
+---------+--------+------+------------+---------+--------------
+ rate_id | bigint | yes  | rate_id    | plain   | 
+primary key, btree, for table "fx.fx_rates"
+
+                      Sequence "fx.fx_rates_rate_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.fx_rates.rate_id
+
+                                                      Table "fx.kyc_tiers"
+     Column      |         Type          | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
+-----------------+-----------------------+-----------+----------+---------+----------+-------------+--------------+-------------
+ tier            | smallint              |           | not null |         | plain    |             |              | 
+ tier_name       | character varying(30) |           | not null |         | extended |             |              | 
+ daily_limit_ngn | numeric(18,2)         |           | not null |         | main     |             |              | 
+ fee_pct         | numeric(5,4)          |           | not null |         | main     |             |              | 
+Indexes:
+    "kyc_tiers_pkey" PRIMARY KEY, btree (tier)
+Check constraints:
+    "kyc_tiers_daily_limit_ngn_check" CHECK (daily_limit_ngn >= 0::numeric)
+    "kyc_tiers_fee_pct_check" CHECK (fee_pct >= 0::numeric AND fee_pct <= 0.05)
+    "kyc_tiers_tier_check" CHECK (tier >= 0 AND tier <= 3)
+Referenced by:
+    TABLE "fx.customers" CONSTRAINT "customers_kyc_tier_fkey" FOREIGN KEY (kyc_tier) REFERENCES fx.kyc_tiers(tier)
+Access method: heap
+
+                   Index "fx.kyc_tiers_pkey"
+ Column |   Type   | Key? | Definition | Storage | Stats target 
+--------+----------+------+------------+---------+--------------
+ tier   | smallint | yes  | tier       | plain   | 
+primary key, btree, for table "fx.kyc_tiers"
+
+                                                              Table "fx.ledger_entries"
+    Column     |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+---------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ entry_id      | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ txn_id        | bigint                   |           | not null |                              | plain    |             |              | 
+ wallet_id     | bigint                   |           | not null |                              | plain    |             |              | 
+ direction     | character(2)             |           | not null |                              | extended |             |              | 
+ amount        | numeric(20,4)            |           | not null |                              | main     |             |              | 
+ balance_after | numeric(20,4)            |           | not null |                              | main     |             |              | 
+ created_at    | timestamp with time zone |           | not null | now()                        | plain    |             |              | 
+Indexes:
+    "ledger_entries_pkey" PRIMARY KEY, btree (entry_id)
+Check constraints:
+    "ledger_entries_amount_check" CHECK (amount > 0::numeric)
+    "ledger_entries_direction_check" CHECK (direction = ANY (ARRAY['DR'::bpchar, 'CR'::bpchar]))
+Foreign-key constraints:
+    "ledger_entries_txn_id_fkey" FOREIGN KEY (txn_id) REFERENCES fx.transactions(txn_id)
+    "ledger_entries_wallet_id_fkey" FOREIGN KEY (wallet_id) REFERENCES fx.wallets(wallet_id)
+Triggers:
+    trg_ledger_balanced AFTER INSERT ON fx.ledger_entries DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION fx.fn_ledger_balanced()
+    trg_ledger_no_update BEFORE DELETE OR UPDATE ON fx.ledger_entries FOR EACH ROW EXECUTE FUNCTION fx.fn_ledger_immutable()
+Access method: heap
+
+                  Sequence "fx.ledger_entries_entry_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.ledger_entries.entry_id
+
+                 Index "fx.ledger_entries_pkey"
+  Column  |  Type  | Key? | Definition | Storage | Stats target 
+----------+--------+------+------------+---------+--------------
+ entry_id | bigint | yes  | entry_id   | plain   | 
+primary key, btree, for table "fx.ledger_entries"
+
+                                                        Table "fx.liquidity_providers"
+  Column   |         Type          | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+-----------+-----------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ lp_id     | smallint              |           | not null | generated always as identity | plain    |             |              | 
+ lp_name   | character varying(60) |           | not null |                              | extended |             |              | 
+ country   | character(2)          |           | not null |                              | extended |             |              | 
+ is_active | boolean               |           | not null | true                         | plain    |             |              | 
+Indexes:
+    "liquidity_providers_pkey" PRIMARY KEY, btree (lp_id)
+    "liquidity_providers_lp_name_key" UNIQUE CONSTRAINT, btree (lp_name)
+Referenced by:
+    TABLE "fx.fx_orders" CONSTRAINT "fx_orders_lp_id_fkey" FOREIGN KEY (lp_id) REFERENCES fx.liquidity_providers(lp_id)
+    TABLE "fx.fx_rates" CONSTRAINT "fx_rates_lp_id_fkey" FOREIGN KEY (lp_id) REFERENCES fx.liquidity_providers(lp_id)
+Access method: heap
+
+            Sequence "fx.liquidity_providers_lp_id_seq"
+   Type   | Start | Minimum | Maximum | Increment | Cycles? | Cache 
+----------+-------+---------+---------+-----------+---------+-------
+ smallint |     1 |       1 |   32767 |         1 | no      |     1
+Sequence for identity column: fx.liquidity_providers.lp_id
+
+                  Index "fx.liquidity_providers_lp_name_key"
+ Column  |         Type          | Key? | Definition | Storage  | Stats target 
+---------+-----------------------+------+------------+----------+--------------
+ lp_name | character varying(60) | yes  | lp_name    | extended | 
+unique, btree, for table "fx.liquidity_providers"
+
+              Index "fx.liquidity_providers_pkey"
+ Column |   Type   | Key? | Definition | Storage | Stats target 
+--------+----------+------+------------+---------+--------------
+ lp_id  | smallint | yes  | lp_id      | plain   | 
+primary key, btree, for table "fx.liquidity_providers"
+
+                                                                 Table "fx.payments"
+    Column     |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+---------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ payment_id    | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ txn_id        | bigint                   |           | not null |                              | plain    |             |              | 
+ channel       | character varying(15)    |           | not null |                              | extended |             |              | 
+ provider_ref  | character varying(60)    |           | not null |                              | extended |             |              | 
+ amount        | numeric(20,4)            |           | not null |                              | main     |             |              | 
+ currency_code | character(3)             |           | not null |                              | extended |             |              | 
+ status        | character varying(10)    |           | not null |                              | extended |             |              | 
+ created_at    | timestamp with time zone |           | not null | now()                        | plain    |             |              | 
+Indexes:
+    "payments_pkey" PRIMARY KEY, btree (payment_id)
+    "payments_provider_ref_key" UNIQUE CONSTRAINT, btree (provider_ref)
+Check constraints:
+    "payments_amount_check" CHECK (amount > 0::numeric)
+    "payments_channel_check" CHECK (channel::text = ANY (ARRAY['BANK_TRANSFER'::character varying, 'CARD'::character varying, 'USSD'::character varying, 'SWIFT'::character varying]::text[]))
+    "payments_status_check" CHECK (status::text = ANY (ARRAY['INITIATED'::character varying, 'CONFIRMED'::character varying, 'FAILED'::character varying]::text[]))
+Foreign-key constraints:
+    "payments_currency_code_fkey" FOREIGN KEY (currency_code) REFERENCES fx.currencies(currency_code)
+    "payments_txn_id_fkey" FOREIGN KEY (txn_id) REFERENCES fx.transactions(txn_id)
+Access method: heap
+
+                    Sequence "fx.payments_payment_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.payments.payment_id
+
+                     Index "fx.payments_pkey"
+   Column   |  Type  | Key? | Definition | Storage | Stats target 
+------------+--------+------+------------+---------+--------------
+ payment_id | bigint | yes  | payment_id | plain   | 
+primary key, btree, for table "fx.payments"
+
+                         Index "fx.payments_provider_ref_key"
+    Column    |         Type          | Key? |  Definition  | Storage  | Stats target 
+--------------+-----------------------+------+--------------+----------+--------------
+ provider_ref | character varying(60) | yes  | provider_ref | extended | 
+unique, btree, for table "fx.payments"
+
+                                                               Table "fx.transactions"
+    Column    |           Type           | Collation | Nullable |           Default            | Storage  | Compression | Stats target | Description 
+--------------+--------------------------+-----------+----------+------------------------------+----------+-------------+--------------+-------------
+ txn_id       | bigint                   |           | not null | generated always as identity | plain    |             |              | 
+ reference    | character varying(40)    |           | not null |                              | extended |             |              | 
+ txn_type     | character varying(15)    |           | not null |                              | extended |             |              | 
+ status       | character varying(10)    |           | not null | 'PENDING'::character varying | extended |             |              | 
+ customer_id  | bigint                   |           | not null |                              | plain    |             |              | 
+ reversal_of  | bigint                   |           |          |                              | plain    |             |              | 
+ created_at   | timestamp with time zone |           | not null | now()                        | plain    |             |              | 
+ completed_at | timestamp with time zone |           |          |                              | plain    |             |              | 
+Indexes:
+    "transactions_pkey" PRIMARY KEY, btree (txn_id)
+    "transactions_reference_key" UNIQUE CONSTRAINT, btree (reference)
+Check constraints:
+    "chk_reversal_self" CHECK (reversal_of IS NULL OR reversal_of <> txn_id)
+    "transactions_status_check" CHECK (status::text = ANY (ARRAY['PENDING'::character varying, 'SUCCESS'::character varying, 'FAILED'::character varying, 'REVERSED'::character varying]::text[]))
+    "transactions_txn_type_check" CHECK (txn_type::text = ANY (ARRAY['FUNDING'::character varying, 'WITHDRAWAL'::character varying, 'FX_CONVERSION'::character varying, 'TRANSFER'::character varying, 'FEE'::character varying, 'REVERSAL'::character varying]::text[]))
+Foreign-key constraints:
+    "transactions_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES fx.customers(customer_id)
+    "transactions_reversal_of_fkey" FOREIGN KEY (reversal_of) REFERENCES fx.transactions(txn_id)
+Referenced by:
+    TABLE "fx.fx_orders" CONSTRAINT "fx_orders_txn_id_fkey" FOREIGN KEY (txn_id) REFERENCES fx.transactions(txn_id)
+    TABLE "fx.ledger_entries" CONSTRAINT "ledger_entries_txn_id_fkey" FOREIGN KEY (txn_id) REFERENCES fx.transactions(txn_id)
+    TABLE "fx.payments" CONSTRAINT "payments_txn_id_fkey" FOREIGN KEY (txn_id) REFERENCES fx.transactions(txn_id)
+    TABLE "fx.transactions" CONSTRAINT "transactions_reversal_of_fkey" FOREIGN KEY (reversal_of) REFERENCES fx.transactions(txn_id)
+Access method: heap
+
+                 Index "fx.transactions_pkey"
+ Column |  Type  | Key? | Definition | Storage | Stats target 
+--------+--------+------+------------+---------+--------------
+ txn_id | bigint | yes  | txn_id     | plain   | 
+primary key, btree, for table "fx.transactions"
+
+                      Index "fx.transactions_reference_key"
+  Column   |         Type          | Key? | Definition | Storage  | Stats target 
+-----------+-----------------------+------+------------+----------+--------------
+ reference | character varying(40) | yes  | reference  | extended | 
+unique, btree, for table "fx.transactions"
+
+                    Sequence "fx.transactions_txn_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.transactions.txn_id
+
+                       Index "fx.uq_wallet_per_currency"
+    Column     |     Type     | Key? |  Definition   | Storage  | Stats target 
+---------------+--------------+------+---------------+----------+--------------
+ customer_id   | bigint       | yes  | customer_id   | plain    | 
+ currency_code | character(3) | yes  | currency_code | extended | 
+unique, btree, for table "fx.wallets"
+
+                                                                  Table "fx.wallets"
+    Column     |           Type           | Collation | Nullable |            Default            | Storage  | Compression | Stats target | Description 
+---------------+--------------------------+-----------+----------+-------------------------------+----------+-------------+--------------+-------------
+ wallet_id     | bigint                   |           | not null | generated always as identity  | plain    |             |              | 
+ customer_id   | bigint                   |           | not null |                               | plain    |             |              | 
+ currency_code | character(3)             |           | not null |                               | extended |             |              | 
+ wallet_type   | character varying(10)    |           | not null | 'CUSTOMER'::character varying | extended |             |              | 
+ balance       | numeric(20,4)            |           | not null | 0                             | main     |             |              | 
+ held_amount   | numeric(20,4)            |           | not null | 0                             | main     |             |              | 
+ version       | integer                  |           | not null | 0                             | plain    |             |              | 
+ created_at    | timestamp with time zone |           | not null | now()                         | plain    |             |              | 
+Indexes:
+    "wallets_pkey" PRIMARY KEY, btree (wallet_id)
+    "uq_wallet_per_currency" UNIQUE CONSTRAINT, btree (customer_id, currency_code)
+Check constraints:
+    "chk_hold_le_balance" CHECK (held_amount = 0::numeric OR held_amount <= balance)
+    "chk_no_overdraft" CHECK (wallet_type::text = 'SETTLEMENT'::text OR balance >= 0::numeric)
+    "wallets_held_amount_check" CHECK (held_amount >= 0::numeric)
+    "wallets_wallet_type_check" CHECK (wallet_type::text = ANY (ARRAY['CUSTOMER'::character varying, 'SETTLEMENT'::character varying]::text[]))
+Foreign-key constraints:
+    "wallets_currency_code_fkey" FOREIGN KEY (currency_code) REFERENCES fx.currencies(currency_code)
+    "wallets_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES fx.customers(customer_id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "fx.fx_orders" CONSTRAINT "fx_orders_buy_wallet_fkey" FOREIGN KEY (buy_wallet) REFERENCES fx.wallets(wallet_id)
+    TABLE "fx.fx_orders" CONSTRAINT "fx_orders_sell_wallet_fkey" FOREIGN KEY (sell_wallet) REFERENCES fx.wallets(wallet_id)
+    TABLE "fx.ledger_entries" CONSTRAINT "ledger_entries_wallet_id_fkey" FOREIGN KEY (wallet_id) REFERENCES fx.wallets(wallet_id)
+Triggers:
+    trg_wallet_version BEFORE UPDATE ON fx.wallets FOR EACH ROW EXECUTE FUNCTION fx.fn_wallet_version()
+Access method: heap
+
+                     Index "fx.wallets_pkey"
+  Column   |  Type  | Key? | Definition | Storage | Stats target 
+-----------+--------+------+------------+---------+--------------
+ wallet_id | bigint | yes  | wallet_id  | plain   | 
+primary key, btree, for table "fx.wallets"
+
+                     Sequence "fx.wallets_wallet_id_seq"
+  Type  | Start | Minimum |       Maximum       | Increment | Cycles? | Cache 
+--------+-------+---------+---------------------+-----------+---------+-------
+ bigint |     1 |       1 | 9223372036854775807 |         1 | no      |     1
+Sequence for identity column: fx.wallets.wallet_id
+
