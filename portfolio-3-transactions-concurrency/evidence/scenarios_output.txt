@@ -1,0 +1,100 @@
+﻿
+==============================================================================
+A1  COMMIT: successful FX conversion (sell 100,000 NGN for USD) - customer 4
+==============================================================================
+before : NGN 42242693.9100 | USD 178.7200
+after  : NGN 42142693.9100 | USD 241.2337   (txn_id=210001)
+ledger legs posted:
+    ('DR', 4, 'NGN', 'CUSTOMER', Decimal('100000.0000'), Decimal('42142693.9100'))
+    ('CR', 1, 'NGN', 'SETTLEMENT', Decimal('100000.0000'), Decimal('-756220131411.1700'))
+    ('DR', 1, 'USD', 'SETTLEMENT', Decimal('62.5137'), Decimal('-4894800.3967'))
+    ('CR', 4, 'USD', 'CUSTOMER', Decimal('62.5137'), Decimal('241.2337'))
+order  : (Decimal('100000.0000'), Decimal('62.5137'), Decimal('1583.651726'), Decimal('1000.0000'))
+
+==============================================================================
+A2  ROLLBACK: conversion that fails (insufficient funds) leaves NO trace
+==============================================================================
+error  : insufficient funds: balance 42142693.9100 < 99999999999
+balances unchanged: True (Decimal('42142693.9100'), Decimal('241.2337'))
+txn row exists for failed reference: False
+
+==============================================================================
+A3  Manual transaction: ROLLBACK mid-way, then SAVEPOINT partial rollback
+==============================================================================
+inside txn (uncommitted) GBP balance: 793.0427 | other session sees: 293.0427
+after ROLLBACK GBP balance: 293.0427 (was 293.0427 )
+constraint blocked bad update -> new row for relation "wallets" violates check constraint "chk_no_overdraft"
+
+==============================================================================
+A4  IDEMPOTENCY: retrying the same request reference does not double-charge
+==============================================================================
+first call txn=210002, retry txn=210002, same=True; NGN balance after 1st=42092693.9100, after retry=42092693.9100, charged once=True
+
+==============================================================================
+A5  REVERSAL: undo the A1 conversion with offsetting entries (history never edited)
+==============================================================================
+before reversal NGN/USD: (Decimal('42092693.9100'), Decimal('241.2337')) | after: (Decimal('42192693.9100'), Decimal('178.7200'))
+original txn status: (210001, 'REVERSED') | reversal txn: (210003, 'REVERSAL', 210001)
+second reversal rejected -> already reversed
+
+==============================================================================
+A6  Business-rule rejections inside the procedure
+==============================================================================
+KYC tier 0 customer                        -> rejected: KYC tier 0 may not convert; complete verification
+daily limit (tier 2: 5,000,000/day)        -> rejected: daily limit exceeded: used 50000.0000 + 6000000 > 5000000.00
+unsupported currency                       -> rejected: unsupported currency JPY
+negative amount                            -> rejected: amount must be positive
+
+==============================================================================
+B1  LOST UPDATE (READ COMMITTED): two sessions each withdraw 100 from a 1000 balance. Correct final = 800
+==============================================================================
+NAIVE read-modify-write          : final balance = 900.0000  -> LOST UPDATE (expected 800) 
+FIX 1 SELECT ... FOR UPDATE        : final balance = 800.0000  -> CORRECT 
+FIX 2 atomic UPDATE balance=balance-100: final balance = 800.0000  -> CORRECT 
+FIX 3 optimistic version check + retry: final balance = 800.0000  -> CORRECT {'A': 'ok after 1 attempt(s)', 'B': 'ok after 2 attempt(s)'}
+
+==============================================================================
+B2  NON-REPEATABLE READ: read a balance twice while another session commits a change in between
+==============================================================================
+READ COMMITTED  : first read 1000.0000, second read 1250.0000  -> NON-REPEATABLE READ
+REPEATABLE READ : first read 1000.0000, second read 1000.0000  -> stable snapshot
+
+==============================================================================
+B3  PHANTOM READ: count rows twice while another session inserts a matching row
+==============================================================================
+READ COMMITTED  : first count 3, second count 4  -> PHANTOM
+REPEATABLE READ : first count 4, second count 4  -> no phantom (PostgreSQL snapshot isolation)
+
+==============================================================================
+B4  WRITE SKEW on a daily withdrawal limit (limit 5,000,000; two concurrent 3,000,000 withdrawals)
+==============================================================================
+    A: saw used=0 -> withdrawal COMMITTED (attempt 1)
+    B: saw used=0 -> withdrawal COMMITTED (attempt 1)
+  REPEATABLE READ: total withdrawn today = 6,000,000 -> LIMIT BREACHED (write skew)
+    A: SerializationFailure (SQLSTATE 40001) on attempt 1 -> retrying
+    A: saw used=3000000.0000 -> REFUSED (limit would be exceeded)
+    B: saw used=0 -> withdrawal COMMITTED (attempt 1)
+  SERIALIZABLE (SSI) with retry: total withdrawn today = 3,000,000 -> limit respected
+
+==============================================================================
+B5  DEADLOCK: two transfers lock the same two wallets in opposite order
+==============================================================================
+naive (A: W1 then W2, B: W2 then W1): {'A': 'ABORTED by deadlock detector (SQLSTATE 40P01)', 'B': 'committed'}
+fixed (both lock in ascending wallet_id): {'A': 'committed', 'B': 'committed'}
+
+==============================================================================
+C  STRESS TEST: 8 concurrent workers, 4,000 conversion requests (10% are duplicate retries) on 200 customers
+==============================================================================
+elapsed 9.7s  throughput 414 requests/s | latency p50 7.6 ms, p95 93.6 ms, max 211.1 ms
+outcomes: {'accepted_or_idempotent': 4000}
+distinct references requested = 3601; distinct references accepted = 3601; transactions created = 3601
+exactly-once check (created == distinct accepted references): PASS
+
+==============================================================================
+INVARIANT CHECKS after all of the above (expect 0 / true)
+==============================================================================
+wallets whose balance != ledger sum        : 0
+transactions unbalanced per currency      : 0
+customer wallets with negative balance    : 0
+net of all ledger legs, any currency (=0) : 0.0000
+customers over their daily limit today    : 37
