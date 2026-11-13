@@ -1,0 +1,81 @@
+﻿SET
+ setseed 
+---------
+ 
+(1 row)
+
+Timing is on.
+TRUNCATE TABLE
+Time: 219.727 ms
+ALTER TABLE
+Time: 7.816 ms
+ALTER TABLE
+Time: 1.953 ms
+ALTER TABLE
+Time: 1.799 ms
+INSERT 0 1
+Time: 22.967 ms
+INSERT 0 20000
+Time: 893.104 ms
+INSERT 0 7
+Time: 10.437 ms
+INSERT 0 80000
+Time: 1440.062 ms (00:01.440)
+INSERT 0 1440000
+Time: 49371.443 ms (00:49.371)
+SELECT 40000
+Time: 134.019 ms
+INSERT 0 40000
+Time: 650.678 ms
+INSERT 0 40000
+Time: 909.228 ms
+SELECT 631809
+Time: 600.087 ms
+CREATE INDEX
+Time: 249.345 ms
+ANALYZE
+Time: 93.173 ms
+SELECT 150000
+Time: 234.718 ms
+SELECT 150000
+Time: 985.515 ms
+INSERT 0 150000
+Time: 4129.782 ms (00:04.130)
+SELECT 80007
+Time: 68.882 ms
+CREATE INDEX
+Time: 96.838 ms
+INSERT 0 150000
+Time: 8703.274 ms (00:08.703)
+SELECT 20000
+Time: 75.317 ms
+INSERT 0 20000
+Time: 500.200 ms
+INSERT 0 20000
+Time: 956.015 ms
+SELECT 720000
+Time: 1119.455 ms (00:01.119)
+INSERT 0 720000
+Time: 21211.622 ms (00:21.212)
+UPDATE 75127
+Time: 3303.628 ms (00:03.304)
+ALTER TABLE
+Time: 53.886 ms
+ALTER TABLE
+Time: 2.621 ms
+ALTER TABLE
+Time: 3.032 ms
+ANALYZE
+Time: 1990.994 ms (00:01.991)
+Timing is off.
+       t        |  count  
+----------------+---------
+ customers      |   20001
+ payments       |   60000
+ wallets        |   80007
+ fx_orders      |  150000
+ transactions   |  210000
+ ledger_entries |  720000
+ fx_rates       | 1440000
+(7 rows)
+
