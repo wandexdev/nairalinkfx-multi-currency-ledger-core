@@ -1,0 +1,6 @@
+﻿SET
+psql:portfolio-2-query-optimisation/06_materialised_view.sql:3: NOTICE:  materialized view "mv_daily_volume" does not exist, skipping
+DROP MATERIALIZED VIEW
+SELECT 477
+CREATE INDEX
+ANALYZE
