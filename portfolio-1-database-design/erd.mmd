@@ -1,0 +1,93 @@
+erDiagram
+    KYC_TIERS ||--o{ CUSTOMERS : "classifies"
+    CUSTOMERS ||--o{ WALLETS : "owns (1 per currency)"
+    CURRENCIES ||--o{ WALLETS : "denominates"
+    CUSTOMERS ||--o{ TRANSACTIONS : "initiates"
+    TRANSACTIONS ||--o| TRANSACTIONS : "reversal_of"
+    TRANSACTIONS ||--o| FX_ORDERS : "FX_CONVERSION detail"
+    TRANSACTIONS ||--|{ LEDGER_ENTRIES : "posts >=2 legs"
+    TRANSACTIONS ||--o{ PAYMENTS : "settled via"
+    WALLETS ||--o{ LEDGER_ENTRIES : "debited/credited"
+    WALLETS ||--o{ FX_ORDERS : "sell_wallet / buy_wallet"
+    LIQUIDITY_PROVIDERS ||--o{ FX_RATES : "quotes"
+    LIQUIDITY_PROVIDERS ||--o{ FX_ORDERS : "fills"
+    CURRENCIES ||--o{ FX_RATES : "base / quote"
+    CURRENCIES ||--o{ PAYMENTS : "paid in"
+    KYC_TIERS { smallint tier PK
+        string tier_name
+        numeric daily_limit_ngn
+        numeric fee_pct }
+    CUSTOMERS { bigint customer_id PK
+        string email "UK"
+        string phone UK
+        string full_name
+        char country_code
+        smallint kyc_tier FK
+        string status
+        timestamptz created_at }
+    CURRENCIES { char currency_code PK
+        string currency_name
+        smallint decimals
+        boolean is_active }
+    WALLETS { bigint wallet_id PK
+        bigint customer_id FK
+        char currency_code FK
+        numeric balance
+        numeric held_amount
+        int version
+        timestamptz created_at }
+    LIQUIDITY_PROVIDERS { smallint lp_id PK
+        string lp_name UK
+        char country
+        boolean is_active }
+    FX_RATES { bigint rate_id PK
+        char base_ccy FK
+        char quote_ccy FK
+        numeric bid
+        numeric ask
+        smallint lp_id FK
+        timestamptz captured_at }
+    TRANSACTIONS { bigint txn_id PK
+        string reference UK
+        string txn_type
+        string status
+        bigint customer_id FK
+        bigint reversal_of FK
+        timestamptz created_at
+        timestamptz completed_at }
+    FX_ORDERS { bigint order_id PK
+        bigint txn_id "FK UK"
+        bigint customer_id FK
+        bigint sell_wallet FK
+        bigint buy_wallet FK
+        string order_type
+        numeric sell_amount
+        numeric buy_amount
+        numeric rate_applied
+        numeric fee_amount
+        smallint lp_id FK
+        string status
+        timestamptz placed_at }
+    LEDGER_ENTRIES { bigint entry_id PK
+        bigint txn_id FK
+        bigint wallet_id FK
+        char direction
+        numeric amount
+        numeric balance_after
+        timestamptz created_at }
+    PAYMENTS { bigint payment_id PK
+        bigint txn_id FK
+        string channel
+        string provider_ref UK
+        numeric amount
+        char currency_code FK
+        string status
+        timestamptz created_at }
+    AUDIT_LOG { bigint audit_id PK
+        string table_name
+        char operation
+        string row_pk
+        jsonb old_data
+        jsonb new_data
+        string changed_by
+        timestamptz changed_at }
