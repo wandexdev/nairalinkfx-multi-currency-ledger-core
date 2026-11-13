@@ -1,0 +1,95 @@
+﻿Connected to MongoDB 7.0.48 | replica set primary: ('mongo1', 27017)
+
+==============================================================================
+0. Collection sizes
+==============================================================================
+customer_profiles    20000
+rate_buckets         8624
+trade_events         210000
+price_alerts         30000
+
+==============================================================================
+1. Profile screen: ONE document read replaces joins over customers + kyc + devices + prefs + wallets
+==============================================================================
+find_one(_id=4) median 1.94 ms (primary-key lookup)
+{"_id": 4, "full_name": "Tunde Okafor", "kyc_tier": 2, "kyc_documents": [["BVN", "VERIFIED"], ["PHONE", "VERIFIED"], ["NIN", "VERIFIED"], ["SELFIE", "VERIFIED"]], "devices": 1, "notification_prefs": {"push": true, "email": true, "sms": true, "rate_alerts": true}, "wallets_cache": [{"ccy": "EUR", "balance": 216.5215}, {"ccy": "GBP", "balance": 293.0427}, {"ccy": "NGN", "balance": 42192693.91}, {"ccy": "USD", "balance": 178.72}]}
+
+==============================================================================
+2. Compliance: queries INTO embedded arrays ($elemMatch = both conditions on the SAME array element)
+==============================================================================
+profiles with a REJECTED/PENDING document: 6232  (brute-force Python check = 6232 -> MATCH; 41.61 ms)
+tier>=2 customers whose NIN document has EXPIRED: 452  (brute force = 452 -> MATCH)
+
+==============================================================================
+3. Market data: daily OHLC-style summary from hourly buckets (aggregation) - verified against PostgreSQL
+==============================================================================
+pipeline median 27.76 ms (scans 4,312 bucket docs instead of 80,000 tick rows)
+  2026-11-13  mongo high=1491.0254 low=1484.9293 ticks=198 | postgres high=1491.0254 low=1484.9293 ticks=198 -> MATCH
+  2026-11-12  mongo high=1491.1634 low=1484.9753 ticks=445 | postgres high=1491.1634 low=1484.9753 ticks=445 -> MATCH
+  2026-11-11  mongo high=1491.6278 low=1485.1967 ticks=445 | postgres high=1491.6278 low=1485.1967 ticks=445 -> MATCH
+  2026-11-10  mongo high=1492.1008 low=1485.5872 ticks=446 | postgres high=1492.1008 low=1485.5872 ticks=446 -> MATCH
+  2026-11-09  mongo high=1492.8748 low=1486.1008 ticks=445 | postgres high=1492.8748 low=1486.1008 ticks=445 -> MATCH
+cross-check: ALL MATCH
+
+==============================================================================
+4. Customer trade history (latest 20): COLLSCAN vs compound index {customer_id:1, ts:-1}  (explain executionStats)
+==============================================================================
+BEFORE index: 186.82 ms
+   plan: SORT > COLLSCAN | docsExamined=210000 keysExamined=0 returned=11 serverTime=135ms
+AFTER  index: 2.15 ms
+   plan: LIMIT > FETCH > IXSCAN | docsExamined=11 keysExamined=11 returned=11 serverTime=1ms
+speed-up x87
+events for customer 777: mongo=11 postgres=11 -> MATCH
+
+==============================================================================
+5. Polymorphic documents: monthly FX volume per bought currency ($group on nested `details` fields) vs PostgreSQL
+==============================================================================
+median 238.49 ms
+  EUR: mongo orders=9782 volume=1,486,720,260 | postgres orders=9782 volume=1,486,720,260 -> MATCH
+  GBP: mongo orders=9936 volume=1,519,212,506 | postgres orders=9936 volume=1,519,212,506 -> MATCH
+  USD: mongo orders=9718 volume=1,497,023,588 | postgres orders=9718 volume=1,497,023,588 -> MATCH
+
+==============================================================================
+6. $lookup (join) + $unwind: top 5 customers by NGN converted, enriched with name and KYC tier from customer_profiles
+==============================================================================
+median 716.1 ms
+  mongo  12934 Obinna Musa        tier 1      3,720,219 (18 orders) | postgres  12934      3,720,219 (18) -> MATCH
+  mongo  14688 Seun Danjuma       tier 1      3,441,949 (16 orders) | postgres  14688      3,441,949 (16) -> MATCH
+  mongo   5878 Femi Afolabi       tier 1      3,383,240 (18 orders) | postgres   5878      3,383,240 (18) -> MATCH
+  mongo  15901 Ada Onyeka         tier 3      3,379,109 (19 orders) | postgres  15901      3,379,109 (19) -> MATCH
+  mongo   1325 Amina Musa         tier 2      3,264,440 (16 orders) | postgres   1325      3,264,440 (16) -> MATCH
+
+==============================================================================
+7. Price alerts: which ACTIVE alerts fire at the latest USD/NGN level? (compound index pair/active/direction/target)
+==============================================================================
+latest USD/NGN level = 1489.44
+4285 alerts fire (same before/after: True)
+BEFORE: 111.73 ms  COLLSCAN | docsExamined=30000 keysExamined=0 returned=4285 serverTime=82ms
+AFTER : 9.78 ms  FETCH > OR > IXSCAN | docsExamined=4285 keysExamined=4285 returned=4285 serverTime=17ms
+
+==============================================================================
+8. Atomic single-document update: approve a PENDING KYC document + upgrade tier + audit entry in ONE write
+==============================================================================
+before: 2 tier 1 [('BVN', 'PENDING'), ('PHONE', 'VERIFIED')]
+matched/modified: 1 1 
+after : 2 tier 2 [('BVN', 'VERIFIED'), ('PHONE', 'VERIFIED')] | audit: KYC_UPGRADE
+
+==============================================================================
+9. Multi-document ACID transaction (replica set): upgrade profile AND write a compliance event together - commit vs abort
+==============================================================================
+start (tier, kyc events): (1, 0)
+with failure -> ABORTED (simulated failure after both writes) | state: (1, 0) (nothing changed: atomic rollback across 2 collections)
+without failure -> COMMITTED | state: (3, 1)
+
+==============================================================================
+10. Schema flexibility: add a field to only some documents - no migration, no downtime
+==============================================================================
+profiles with preferences.theme: 3 of 20000
+
+==============================================================================
+11. Storage and indexes
+==============================================================================
+customer_profiles  docs=  20000 dataSize=   19.9 MB indexSize=   0.5 MB indexes=['_id_']
+rate_buckets       docs=   8624 dataSize=   13.4 MB indexSize=   0.3 MB indexes=['_id_']
+trade_events       docs= 210000 dataSize=   46.3 MB indexSize=   8.7 MB indexes=['_id_', 'cust_ts']
+price_alerts       docs=  30000 dataSize=    3.7 MB indexSize=   1.3 MB indexes=['_id_', 'alert_match']
