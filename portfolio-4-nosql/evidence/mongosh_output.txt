@@ -1,1 +1,76 @@
-﻿Error response from daemon: No such container: mongo1
+﻿rs0 [primary] test> 
+rs0 [primary] test> 
+rs0 [primary] nairalink_nosql> --- CRUD: one customer profile (embedded KYC documents + devices)
+
+rs0 [primary] nairalink_nosql> {
+  _id: 4,
+  full_name: 'Tunde Okafor',
+  kyc: {
+    tier: 2,
+    documents: [
+      {
+        type: 'BVN',
+        status: 'VERIFIED'
+      },
+      {
+        type: 'PHONE',
+        status: 'VERIFIED'
+      },
+      {
+        type: 'NIN',
+        status: 'VERIFIED'
+      },
+      {
+        type: 'SELFIE',
+        status: 'VERIFIED'
+      }
+    ]
+  }
+}
+
+rs0 [primary] nairalink_nosql> --- Query: tier-2+ customers with a REJECTED document  (count)
+
+rs0 [primary] nairalink_nosql> 1375
+
+rs0 [primary] nairalink_nosql> --- Aggregation: FX volume by currency, October 2026
+
+rs0 [primary] nairalink_nosql> | {
+  _id: 'EUR',
+  orders: 9782,
+  ngn: 1486720259.55
+}
+{
+  _id: 'GBP',
+  orders: 9936,
+  ngn: 1519212506.37
+}
+{
+  _id: 'USD',
+  orders: 9718,
+  ngn: 1497023588.32
+}
+
+rs0 [primary] nairalink_nosql> --- Explain: history query uses the compound index
+
+rs0 [primary] nairalink_nosql> 
+rs0 [primary] nairalink_nosql> | stage: "FETCH" | keysExamined: 11 | docsExamined: 11
+
+rs0 [primary] nairalink_nosql> --- Replica set status
+
+rs0 [primary] nairalink_nosql> [
+  {
+    name: 'mongo1:27017',
+    state: 'SECONDARY'
+  },
+  {
+    name: 'mongo2:27018',
+    state: 'SECONDARY'
+  },
+  {
+    name: 'mongo3:27019',
+    state: 'PRIMARY'
+  }
+]
+
+rs0 [primary] nairalink_nosql> 
+rs0 [primary] nairalink_nosql> 
