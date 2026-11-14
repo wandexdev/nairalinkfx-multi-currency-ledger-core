@@ -1,0 +1,30 @@
+flowchart LR
+  subgraph APP["Application tier (stateless)"]
+    API["FX API / mobile app backend"]
+  end
+  subgraph PGC["PostgreSQL - system of record (money)"]
+    direction TB
+    PGP[("Primary<br/>writes + ledger<br/>fx.convert_currency")]
+    PGR[("Hot standby<br/>read-only reports<br/>failover target")]
+    PGP -- "streaming WAL<br/>sync (commit) or async" --> PGR
+    subgraph SH["Sharded wallets (FDW, HASH customer_id)"]
+      S1[("shard 1")]
+      S2[("shard 2")]
+    end
+    PGP -. "hash routing" .-> S1
+    PGP -. "hash routing" .-> S2
+    PART["fx_rates partitioned by month<br/>DETACH oldest = instant retention"]
+  end
+  subgraph MGC["MongoDB replica set rs0 - profiles, rate buckets, events, alerts"]
+    direction TB
+    M1[("PRIMARY")]
+    M2[("SECONDARY")]
+    M3[("SECONDARY")]
+    M1 -- "oplog" --> M2
+    M1 -- "oplog" --> M3
+  end
+  API -- "writes / ACID" --> PGP
+  API -- "stale-tolerant reads" --> PGR
+  API -- "w=majority" --> M1
+  API -- "secondary reads<br/>(causal session)" --> M2
+  PGP -. "ETL / CDC (shared keys)" .-> M1

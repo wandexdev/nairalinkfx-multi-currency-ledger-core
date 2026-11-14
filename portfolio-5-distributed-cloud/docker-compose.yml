@@ -1,0 +1,29 @@
+# Portfolio 5
+services:
+  pg-primary:
+    container_name: pg-primary
+    image: postgres:16
+    environment: { POSTGRES_USER: pguser, POSTGRES_PASSWORD: pgpass, POSTGRES_DB: nairalink }
+    command: ["postgres","-c","wal_level=replica","-c","max_wal_senders=10","-c","max_replication_slots=10","-c","hot_standby=on"]
+    ports: ["5432:5432"]
+    volumes: ["pgprimary:/var/lib/postgresql/data", "./docker/pg-init:/docker-entrypoint-initdb.d:ro"]
+    healthcheck: { test: ["CMD-SHELL","pg_isready -U pguser -d nairalink"], interval: 3s, retries: 20 }
+
+  pg-replica:                       # physical streaming standby (read-only)
+    container_name: pg-replica
+    image: postgres:16
+    depends_on: { pg-primary: { condition: service_healthy } }
+    environment: { PGPASSWORD: pgpass }
+    ports: ["5433:5432"]
+    volumes: ["pgreplica:/var/lib/postgresql/data"]
+    entrypoint: ["bash","-c","if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then pg_basebackup -h pg-primary -U pguser -D /var/lib/postgresql/data -R -X stream -C -S replica1 && echo \"primary_conninfo = 'host=pg-primary port=5432 user=pguser password=pgpass application_name=replica1'\" >> /var/lib/postgresql/data/postgresql.auto.conf && chown -R postgres:postgres /var/lib/postgresql/data && chmod 700 /var/lib/postgresql/data; fi; exec gosu postgres postgres -c hot_standby=on"]
+
+  mongo1: { container_name: mongo1, image: "mongo:7", command: ["mongod","--replSet","rs0","--bind_ip_all","--port","27017"], ports: ["27017:27017"], volumes: ["mongo1:/data/db"] }
+  mongo2: { container_name: mongo2, image: "mongo:7", command: ["mongod","--replSet","rs0","--bind_ip_all","--port","27018"], ports: ["27018:27018"], volumes: ["mongo2:/data/db"] }
+  mongo3: { container_name: mongo3, image: "mongo:7", command: ["mongod","--replSet","rs0","--bind_ip_all","--port","27019"], ports: ["27019:27019"], volumes: ["mongo3:/data/db"] }
+  mongo-init:                       # one-shot: forms the replica set
+    image: "mongo:7"
+    depends_on: [mongo1, mongo2, mongo3]
+    restart: "no"
+    entrypoint: ["bash","-c","sleep 8; mongosh --host mongo1 --port 27017 --quiet --eval 'try{rs.status()}catch(e){rs.initiate({_id:\"rs0\",members:[{_id:1,host:\"mongo1:27017\"},{_id:2,host:\"mongo2:27018\"},{_id:3,host:\"mongo3:27019\"}]})}'"]
+volumes: { pgprimary: {}, pgreplica: {}, mongo1: {}, mongo2: {}, mongo3: {} }
