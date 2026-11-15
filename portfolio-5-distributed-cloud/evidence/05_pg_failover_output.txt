@@ -1,10 +1,25 @@
-﻿Traceback (most recent call last):
-  File "C:\Users\Rajitri\Downloads\nairalinkfx-multi-currency-ledger-core\portfolio-5-distributed-cloud\05_pg_failover.py", line 18, in <module>
-    pri = psycopg.connect(P, autocommit=True); rep = psycopg.connect(R, autocommit=True)
-                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\Rajitri\Downloads\nairalinkfx-multi-currency-ledger-core\.venv\Lib\site-packages\psycopg\connection.py", line 134, in connect
-    raise new_ex.with_traceback(None)
-psycopg.errors.ConnectionTimeout: connection timeout expired
-Multiple connection attempts failed. All failures were:
-- host: None, port: '5433', hostaddr: '::1': connection timeout expired
-- host: None, port: '5433', hostaddr: '127.0.0.1': connection timeout expired
+﻿
+==============================================================================
+F0  Setup: synchronous replication ON (a commit is acknowledged only after the standby has the WAL)
+==============================================================================
+primary replication state: [('replica1', 'streaming', 'sync')]
+WAL timeline before: 1
+
+==============================================================================
+F1  A writer inserts continuously; the primary is killed with `pg_ctl stop -m immediate` (like a power cut: no shutdown checkpoint)
+==============================================================================
+primary stopped: True | 501 commits had been ACKNOWLEDGED to the client
+
+==============================================================================
+F2  Promote the standby (`pg_ctl promote`) and measure time until it accepts writes
+==============================================================================
+standby promoted; first successful write on the NEW primary after 2.85 s from the failure (promotion step itself 1.26 s)
+new primary: pg_is_in_recovery() = False | WAL timeline now = 2 (was 1: the timeline increments at promotion, so the old primary's history cannot be confused with the new one)
+
+==============================================================================
+F3  Did we lose any acknowledged commit? (RPO check)
+==============================================================================
+acknowledged commits: 501 | present on promoted standby: 501 | LOST: 0 -> RPO = 0 (synchronous replication)
+commits present but never acknowledged to the client: 0 (the standby had it when the primary died, before the ack reached the app - safe, but the app must treat it as 'unknown' and retry idempotently, exactly like our idempotency key design)
+business data intact on the new primary: ledger lines = 729600 | wallets/ledger reconcile mismatches = 0
+conversion on the new primary: 212410 (FX conversion committed on the promoted node)
