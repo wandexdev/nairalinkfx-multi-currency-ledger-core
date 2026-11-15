@@ -55,7 +55,7 @@ I ran 9 business queries with `EXPLAIN (ANALYZE, BUFFERS)` (median of 5 runs) be
 ![before](https://raw.githubusercontent.com/wandexdev/nairalinkfx-multi-currency-ledger-core/main/screenshots/P2_bench_before_console.png)
 ![after](https://raw.githubusercontent.com/wandexdev/nairalinkfx-multi-currency-ledger-core/main/screenshots/P2_bench_after_console.png)
 
-**Findings.** An index is necessary but the query shape must let the engine use it (Q1a vs Q1b); not every query gains (Q7 is O(n) by nature, the right answer is a scheduled batch); hot dashboards are best pre-aggregated, at the price of bounded staleness (`REFRESH MATERIALIZED VIEW CONCURRENTLY`). My first benchmark run showed some queries *slower* after indexing; the cause was stale statistics and an unvacuumed table, and re-running after `VACUUM ANALYZE` gave the numbers above. Details: `portfolio-2-query-optimisation/analysis.md`.
+**Findings**: There needs to be an index, but queries need to be structured in a way that can utilize the index (Q1a vs Q1b). Not all queries will benefit. Some queries will inherently be O(n) like (Q7), and should be scheduled as batches. The optimal solution would be to pre-aggregate any popular dashboards, however this introduces bounded staleness (`REFRESH MATERIALIZED VIEW CONCURRENTLY`). In my initial benchmark runs, there were some queries that were *slower* after adding indexes due to bad statistics (table needed vacuuming). However after running VACUUM ANALYZE, the results were as shown above. Further details can be found here: portfolio-2-query-optimisation/analysis.md
 
 ## 5. Portfolio 3: Transactions and concurrency
 
