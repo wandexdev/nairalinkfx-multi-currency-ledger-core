@@ -9,7 +9,7 @@
 | `erd.mmd` / `erd.png` | ER diagram (Mermaid source + rendered image) |
 | `01_schema.sql` | Relational schema: tables, PK/FK, CHECK, UNIQUE, reference data |
 | `02_integrity_triggers.sql` | Audit trigger, version bump, append-only ledger, deferred double-entry check |
-| `03_constraint_tests.sql` | 13 tests proving each constraint rejects bad data |
+| `03_constraint_tests.sql` | 14 checks: 11 expected rejections and 3 positive checks |
 | `normalisation.md` | UNF -> 3NF walkthrough + justified denormalisation |
 | `evidence/` | Captured test output, `\d+` descriptions, schema dump |
 

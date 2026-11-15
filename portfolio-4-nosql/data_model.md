@@ -15,7 +15,7 @@ hierarchical or shape-varying* - polyglot persistence, not a replacement.
 | *Ledger, wallets, orders* | Need multi-row ACID, constraints, double-entry balance, FK integrity | **Stay in PostgreSQL** |
 
 ## Collections
-Real sample documents: `evidence/sample_documents.json`.
+Real documents can be inspected with `db.customer_profiles.findOne()` (see `evidence/mongosh_output.txt`).
 ```
 customer_profiles  _id = customer_id (same key as PostgreSQL)
   { email, full_name, country, status, created_at,
