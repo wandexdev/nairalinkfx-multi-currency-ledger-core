@@ -11,35 +11,35 @@ WITH vol AS (
 )
 SELECT * FROM ranked WHERE rnk <= 5 ORDER BY kyc_tier, rnk;
 
-Incremental Sort  (cost=7541.33..8937.76 rows=19046 width=70) (actual time=178.202..178.208 rows=20 loops=1)
+Incremental Sort  (cost=7451.48..8833.67 rows=18865 width=70) (actual time=169.730..169.737 rows=20 loops=1)
   Sort Key: c.kyc_tier, (rank() OVER (?))
   Presorted Key: c.kyc_tier
   Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
-  Buffers: shared hit=885, temp read=12 written=35
-  ->  WindowAgg  (cost=7155.24..7536.16 rows=19046 width=70) (actual time=174.840..178.186 rows=20 loops=1)
+  Buffers: shared hit=881, temp read=11 written=34
+  ->  WindowAgg  (cost=7069.39..7446.69 rows=18865 width=70) (actual time=165.749..169.715 rows=20 loops=1)
         Run Condition: (rank() OVER (?) <= 5)
-        Buffers: shared hit=885, temp read=12 written=35
-        ->  Sort  (cost=7155.24..7202.85 rows=19046 width=62) (actual time=174.824..176.779 rows=19701 loops=1)
+        Buffers: shared hit=881, temp read=11 written=34
+        ->  Sort  (cost=7069.39..7116.55 rows=18865 width=62) (actual time=165.733..167.960 rows=19702 loops=1)
               Sort Key: c.kyc_tier, v.ngn_sold DESC
               Sort Method: quicksort  Memory: 2153kB
-              Buffers: shared hit=885, temp read=12 written=35
-              ->  Hash Join  (cost=5276.81..5801.33 rows=19046 width=62) (actual time=91.869..113.899 rows=19701 loops=1)
+              Buffers: shared hit=881, temp read=11 written=34
+              ->  Hash Join  (cost=5205.12..5729.65 rows=18865 width=62) (actual time=90.419..103.035 rows=19702 loops=1)
                     Hash Cond: (c.customer_id = v.customer_id)
-                    Buffers: shared hit=885, temp read=12 written=35
-                    ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=22) (actual time=0.015..2.051 rows=20001 loops=1)
+                    Buffers: shared hit=881, temp read=11 written=34
+                    ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=22) (actual time=0.007..2.618 rows=20001 loops=1)
                           Buffers: shared hit=272
-                    ->  Hash  (cost=5038.74..5038.74 rows=19046 width=48) (actual time=91.723..91.725 rows=19701 loops=1)
+                    ->  Hash  (cost=4969.31..4969.31 rows=18865 width=48) (actual time=90.327..90.330 rows=19702 loops=1)
                           Buckets: 32768  Batches: 1  Memory Usage: 1486kB
-                          Buffers: shared hit=613, temp read=12 written=35
-                          ->  Subquery Scan on v  (cost=4610.20..5038.74 rows=19046 width=48) (actual time=72.254..85.316 rows=19701 loops=1)
-                                Buffers: shared hit=613, temp read=12 written=35
-                                ->  HashAggregate  (cost=4610.20..4848.28 rows=19046 width=48) (actual time=72.252..82.975 rows=19701 loops=1)
+                          Buffers: shared hit=609, temp read=11 written=34
+                          ->  Subquery Scan on v  (cost=4544.85..4969.31 rows=18865 width=48) (actual time=55.731..80.277 rows=19702 loops=1)
+                                Buffers: shared hit=609, temp read=11 written=34
+                                ->  HashAggregate  (cost=4544.85..4780.66 rows=18865 width=48) (actual time=55.730..77.562 rows=19702 loops=1)
                                       Group Key: o.customer_id
-                                      Batches: 5  Memory Usage: 8241kB  Disk Usage: 216kB
-                                      Buffers: shared hit=613, temp read=12 written=35
-                                      ->  Index Only Scan using idx_orders_time_cover on fx_orders o  (cost=0.42..3967.67 rows=85671 width=16) (actual time=0.042..16.169 rows=85343 loops=1)
+                                      Batches: 5  Memory Usage: 8241kB  Disk Usage: 208kB
+                                      Buffers: shared hit=609, temp read=11 written=34
+                                      ->  Index Only Scan using idx_orders_time_cover on fx_orders o  (cost=0.42..3911.12 rows=84497 width=16) (actual time=0.030..14.585 rows=84721 loops=1)
                                             Index Cond: (placed_at >= (now() - '90 days'::interval))
                                             Heap Fetches: 0
-                                            Buffers: shared hit=613
-Planning Time: 0.420 ms
-Execution Time: 178.864 ms
+                                            Buffers: shared hit=609
+Planning Time: 0.201 ms
+Execution Time: 170.516 ms

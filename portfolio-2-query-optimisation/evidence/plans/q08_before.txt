@@ -9,39 +9,39 @@ WHERE d.ngn_sold >= 0.8 * k.daily_limit_ngn
 ORDER BY d.ngn_sold DESC
 LIMIT 20;
 
-Limit  (cost=7250.65..7250.70 rows=20 width=50) (actual time=200.920..200.929 rows=20 loops=1)
-  Buffers: shared hit=2693, temp read=44 written=111
-  ->  Sort  (cost=7250.65..7272.59 rows=8775 width=50) (actual time=200.918..200.924 rows=20 loops=1)
+Limit  (cost=7196.76..7196.81 rows=20 width=50) (actual time=95.165..95.173 rows=20 loops=1)
+  Buffers: shared hit=2693, temp read=40 written=108
+  ->  Sort  (cost=7196.76..7217.92 rows=8463 width=50) (actual time=95.163..95.169 rows=20 loops=1)
         Sort Key: (sum(fx_orders.sell_amount)) DESC
         Sort Method: top-N heapsort  Memory: 27kB
-        Buffers: shared hit=2693, temp read=44 written=111
-        ->  Hash Join  (cost=6119.65..7017.15 rows=8775 width=50) (actual time=151.987..199.482 rows=2832 loops=1)
+        Buffers: shared hit=2693, temp read=40 written=108
+        ->  Hash Join  (cost=6105.91..6971.57 rows=8463 width=50) (actual time=65.144..94.237 rows=2793 loops=1)
               Hash Cond: (c.kyc_tier = k.tier)
               Join Filter: ((sum(fx_orders.sell_amount)) >= (0.8 * k.daily_limit_ngn))
-              Rows Removed by Join Filter: 24692
-              Buffers: shared hit=2693, temp read=44 written=111
-              ->  Hash Join  (cost=6118.56..6911.58 rows=26324 width=46) (actual time=151.922..187.299 rows=27524 loops=1)
+              Rows Removed by Join Filter: 24118
+              Buffers: shared hit=2693, temp read=40 written=108
+              ->  Hash Join  (cost=6104.82..6869.71 rows=25390 width=46) (actual time=65.109..86.631 rows=26911 loops=1)
                     Hash Cond: (fx_orders.customer_id = c.customer_id)
-                    Buffers: shared hit=2692, temp read=44 written=111
-                    ->  HashAggregate  (cost=5396.54..5857.21 rows=26324 width=44) (actual time=134.121..157.071 rows=27524 loops=1)
+                    Buffers: shared hit=2692, temp read=40 written=108
+                    ->  HashAggregate  (cost=5382.80..5827.12 rows=25390 width=44) (actual time=59.399..73.340 rows=26911 loops=1)
                           Group Key: fx_orders.customer_id, (date_trunc('day'::text, fx_orders.placed_at))::date
-                          Batches: 5  Memory Usage: 8241kB  Disk Usage: 664kB
-                          Buffers: shared hit=2420, temp read=44 written=111
-                          ->  Seq Scan on fx_orders  (cost=0.00..5185.61 rows=28123 width=20) (actual time=0.025..96.371 rows=28175 loops=1)
+                          Batches: 5  Memory Usage: 8241kB  Disk Usage: 656kB
+                          Buffers: shared hit=2420, temp read=40 written=108
+                          ->  Seq Scan on fx_orders  (cost=0.00..5180.12 rows=27024 width=20) (actual time=0.019..42.363 rows=27535 loops=1)
                                 Filter: (placed_at >= (now() - '30 days'::interval))
-                                Rows Removed by Filter: 121825
+                                Rows Removed by Filter: 122465
                                 Buffers: shared hit=2420
-                    ->  Hash  (cost=472.01..472.01 rows=20001 width=10) (actual time=17.779..17.780 rows=20001 loops=1)
+                    ->  Hash  (cost=472.01..472.01 rows=20001 width=10) (actual time=5.695..5.696 rows=20001 loops=1)
                           Buckets: 32768  Batches: 1  Memory Usage: 1077kB
                           Buffers: shared hit=272
-                          ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=10) (actual time=0.006..5.221 rows=20001 loops=1)
+                          ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=10) (actual time=0.004..2.364 rows=20001 loops=1)
                                 Buffers: shared hit=272
-              ->  Hash  (cost=1.04..1.04 rows=4 width=6) (actual time=0.018..0.018 rows=4 loops=1)
+              ->  Hash  (cost=1.04..1.04 rows=4 width=6) (actual time=0.010..0.011 rows=4 loops=1)
                     Buckets: 1024  Batches: 1  Memory Usage: 9kB
                     Buffers: shared hit=1
-                    ->  Seq Scan on kyc_tiers k  (cost=0.00..1.04 rows=4 width=6) (actual time=0.012..0.013 rows=4 loops=1)
+                    ->  Seq Scan on kyc_tiers k  (cost=0.00..1.04 rows=4 width=6) (actual time=0.007..0.008 rows=4 loops=1)
                           Buffers: shared hit=1
 Planning:
   Buffers: shared hit=4
-Planning Time: 0.359 ms
-Execution Time: 201.646 ms
+Planning Time: 0.237 ms
+Execution Time: 95.640 ms

@@ -8,20 +8,20 @@ CROSS JOIN LATERAL (
 ) r
 ORDER BY lp.lp_id;
 
-Nested Loop  (cost=39066.69..117211.89 rows=3 width=26) (actual time=371.789..876.993 rows=3 loops=1)
-  Buffers: shared hit=1922 read=38454
-  ->  Index Only Scan using liquidity_providers_pkey on liquidity_providers lp  (cost=0.13..12.18 rows=3 width=2) (actual time=0.014..0.037 rows=3 loops=1)
-        Heap Fetches: 3
+Nested Loop  (cost=39045.09..117143.09 rows=3 width=26) (actual time=197.201..564.853 rows=3 loops=1)
+  Buffers: shared hit=1826 read=38550
+  ->  Index Only Scan using liquidity_providers_pkey on liquidity_providers lp  (cost=0.13..8.18 rows=3 width=2) (actual time=0.009..0.024 rows=3 loops=1)
+        Heap Fetches: 0
         Buffers: shared hit=2
-  ->  Limit  (cost=39066.56..39066.56 rows=1 width=24) (actual time=292.311..292.312 rows=1 loops=3)
-        Buffers: shared hit=1920 read=38454
-        ->  Sort  (cost=39066.56..39270.84 rows=81712 width=24) (actual time=292.306..292.306 rows=1 loops=3)
+  ->  Limit  (cost=39044.96..39044.96 rows=1 width=24) (actual time=188.269..188.270 rows=1 loops=3)
+        Buffers: shared hit=1824 read=38550
+        ->  Sort  (cost=39044.96..39238.44 rows=77392 width=24) (actual time=188.265..188.266 rows=1 loops=3)
               Sort Key: fx_rates.captured_at DESC
               Sort Method: top-N heapsort  Memory: 25kB
-              Buffers: shared hit=1920 read=38454
-              ->  Seq Scan on fx_rates  (cost=0.00..38658.00 rows=81712 width=24) (actual time=59.308..264.744 rows=80000 loops=3)
+              Buffers: shared hit=1824 read=38550
+              ->  Seq Scan on fx_rates  (cost=0.00..38658.00 rows=77392 width=24) (actual time=45.730..168.931 rows=80000 loops=3)
                     Filter: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = lp.lp_id))
                     Rows Removed by Filter: 1360000
-                    Buffers: shared hit=1920 read=38454
-Planning Time: 0.168 ms
-Execution Time: 877.030 ms
+                    Buffers: shared hit=1824 read=38550
+Planning Time: 0.104 ms
+Execution Time: 564.879 ms

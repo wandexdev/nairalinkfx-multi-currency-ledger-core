@@ -4,21 +4,21 @@ FROM fx.fx_rates
 WHERE base_ccy = 'USD' AND quote_ccy = 'NGN'
 ORDER BY lp_id, captured_at DESC;
 
-Unique  (cost=34402.67..63565.63 rows=3 width=26) (actual time=319.462..428.318 rows=3 loops=1)
-  Buffers: shared hit=504 read=13042, temp read=1237 written=1240
-  ->  Gather Merge  (cost=34402.67..62952.79 rows=245136 width=26) (actual time=319.460..405.486 rows=240000 loops=1)
+Unique  (cost=33785.98..61407.14 rows=3 width=26) (actual time=494.516..584.902 rows=3 loops=1)
+  Buffers: shared hit=472 read=13074, temp read=1236 written=1239
+  ->  Gather Merge  (cost=33785.98..60826.70 rows=232176 width=26) (actual time=494.514..564.916 rows=240000 loops=1)
         Workers Planned: 2
         Workers Launched: 2
-        Buffers: shared hit=504 read=13042, temp read=1237 written=1240
-        ->  Sort  (cost=33402.64..33657.99 rows=102140 width=26) (actual time=309.931..322.825 rows=80000 loops=3)
+        Buffers: shared hit=472 read=13074, temp read=1236 written=1239
+        ->  Sort  (cost=32785.95..33027.80 rows=96740 width=26) (actual time=484.551..495.318 rows=80000 loops=3)
               Sort Key: lp_id, captured_at DESC
-              Sort Method: external merge  Disk: 3408kB
-              Buffers: shared hit=504 read=13042, temp read=1237 written=1240
+              Sort Method: external merge  Disk: 3384kB
+              Buffers: shared hit=472 read=13074, temp read=1236 written=1239
               Worker 0:  Sort Method: external merge  Disk: 3232kB
-              Worker 1:  Sort Method: external merge  Disk: 3256kB
-              ->  Parallel Seq Scan on fx_rates  (cost=0.00..22458.00 rows=102140 width=26) (actual time=0.045..137.226 rows=80000 loops=3)
+              Worker 1:  Sort Method: external merge  Disk: 3272kB
+              ->  Parallel Seq Scan on fx_rates  (cost=0.00..22458.00 rows=96740 width=26) (actual time=6.093..341.425 rows=80000 loops=3)
                     Filter: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar))
                     Rows Removed by Filter: 400000
-                    Buffers: shared hit=416 read=13042
-Planning Time: 0.092 ms
-Execution Time: 428.929 ms
+                    Buffers: shared hit=384 read=13074
+Planning Time: 0.111 ms
+Execution Time: 586.136 ms

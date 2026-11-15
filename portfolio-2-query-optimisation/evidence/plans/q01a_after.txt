@@ -4,18 +4,18 @@ FROM fx.fx_rates
 WHERE base_ccy = 'USD' AND quote_ccy = 'NGN'
 ORDER BY lp_id, captured_at DESC;
 
-Unique  (cost=49953.01..51107.17 rows=3 width=26) (actual time=440.862..536.316 rows=3 loops=1)
+Unique  (cost=51609.56..52813.64 rows=3 width=26) (actual time=445.662..502.580 rows=3 loops=1)
   Buffers: shared hit=3431, temp read=1237 written=1241
-  ->  Sort  (cost=49953.01..50530.09 rows=230832 width=26) (actual time=440.859..500.522 rows=240000 loops=1)
+  ->  Sort  (cost=51609.56..52211.60 rows=240816 width=26) (actual time=445.660..485.302 rows=240000 loops=1)
         Sort Key: lp_id, captured_at DESC
         Sort Method: external merge  Disk: 9896kB
         Buffers: shared hit=3431, temp read=1237 written=1241
-        ->  Bitmap Heap Scan on fx_rates  (cost=6946.46..23866.94 rows=230832 width=26) (actual time=25.820..77.605 rows=240000 loops=1)
+        ->  Bitmap Heap Scan on fx_rates  (cost=7248.79..24319.03 rows=240816 width=26) (actual time=21.288..69.559 rows=240000 loops=1)
               Recheck Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar))
               Heap Blocks: exact=2246
               Buffers: shared hit=3431
-              ->  Bitmap Index Scan on idx_fx_rates_pair_lp_time  (cost=0.00..6888.75 rows=230832 width=0) (actual time=25.425..25.426 rows=240000 loops=1)
+              ->  Bitmap Index Scan on idx_fx_rates_pair_lp_time  (cost=0.00..7188.59 rows=240816 width=0) (actual time=20.981..20.982 rows=240000 loops=1)
                     Index Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar))
                     Buffers: shared hit=1185
-Planning Time: 0.088 ms
-Execution Time: 540.246 ms
+Planning Time: 0.082 ms
+Execution Time: 504.107 ms

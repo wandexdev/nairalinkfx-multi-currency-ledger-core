@@ -10,33 +10,33 @@ SELECT day, round(mid,2) AS mid,
        round(avg(mid) OVER (ORDER BY day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW),2) AS ma7
 FROM daily ORDER BY day DESC LIMIT 14;
 
-Limit  (cost=34959.54..34959.58 rows=14 width=68) (actual time=150.258..150.369 rows=14 loops=1)
-  Buffers: shared hit=1130 read=12402
-  ->  Sort  (cost=34959.54..35023.96 rows=25768 width=68) (actual time=150.256..150.365 rows=14 loops=1)
+Limit  (cost=34708.57..34708.61 rows=14 width=68) (actual time=151.902..153.132 rows=14 loops=1)
+  Buffers: shared hit=1098 read=12434
+  ->  Sort  (cost=34708.57..34770.11 rows=24616 width=68) (actual time=151.901..153.126 rows=14 loops=1)
         Sort Key: ((date_trunc('day'::text, fx_rates.captured_at))::date) DESC
         Sort Method: top-N heapsort  Memory: 27kB
-        Buffers: shared hit=1130 read=12402
-        ->  WindowAgg  (cost=30271.11..34340.16 rows=25768 width=68) (actual time=143.644..150.330 rows=61 loops=1)
-              Buffers: shared hit=1130 read=12402
-              ->  Finalize GroupAggregate  (cost=30271.11..33824.80 rows=25768 width=36) (actual time=143.537..150.099 rows=61 loops=1)
+        Buffers: shared hit=1098 read=12434
+        ->  WindowAgg  (cost=30230.88..34116.88 rows=24616 width=68) (actual time=143.011..153.083 rows=60 loops=1)
+              Buffers: shared hit=1098 read=12434
+              ->  Finalize GroupAggregate  (cost=30230.88..33624.56 rows=24616 width=36) (actual time=142.993..152.898 rows=60 loops=1)
                     Group Key: ((date_trunc('day'::text, fx_rates.captured_at))::date)
-                    Buffers: shared hit=1130 read=12402
-                    ->  Gather Merge  (cost=30271.11..33205.14 rows=22496 width=36) (actual time=143.177..149.910 rows=91 loops=1)
+                    Buffers: shared hit=1098 read=12434
+                    ->  Gather Merge  (cost=30230.88..33032.67 rows=21482 width=36) (actual time=142.977..152.636 rows=87 loops=1)
                           Workers Planned: 2
                           Workers Launched: 2
-                          Buffers: shared hit=1130 read=12402
-                          ->  Partial GroupAggregate  (cost=29271.08..29608.52 rows=11248 width=36) (actual time=123.607..134.270 rows=30 loops=3)
+                          Buffers: shared hit=1098 read=12434
+                          ->  Partial GroupAggregate  (cost=29230.86..29553.09 rows=10741 width=36) (actual time=122.278..132.111 rows=29 loops=3)
                                 Group Key: ((date_trunc('day'::text, fx_rates.captured_at))::date)
-                                Buffers: shared hit=1130 read=12402
-                                ->  Sort  (cost=29271.08..29299.20 rows=11248 width=20) (actual time=123.528..125.273 rows=8852 loops=3)
+                                Buffers: shared hit=1098 read=12434
+                                ->  Sort  (cost=29230.86..29257.71 rows=10741 width=20) (actual time=122.000..122.796 rows=8757 loops=3)
                                       Sort Key: ((date_trunc('day'::text, fx_rates.captured_at))::date)
-                                      Sort Method: quicksort  Memory: 555kB
-                                      Buffers: shared hit=1130 read=12402
-                                      Worker 0:  Sort Method: quicksort  Memory: 786kB
-                                      Worker 1:  Sort Method: quicksort  Memory: 866kB
-                                      ->  Parallel Seq Scan on fx_rates  (cost=0.00..28514.24 rows=11248 width=20) (actual time=7.001..118.501 rows=8852 loops=3)
+                                      Sort Method: quicksort  Memory: 542kB
+                                      Buffers: shared hit=1098 read=12434
+                                      Worker 0:  Sort Method: quicksort  Memory: 865kB
+                                      Worker 1:  Sort Method: quicksort  Memory: 786kB
+                                      ->  Parallel Seq Scan on fx_rates  (cost=0.00..28511.71 rows=10741 width=20) (actual time=10.541..118.019 rows=8757 loops=3)
                                             Filter: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = 1) AND (captured_at >= (now() - '60 days'::interval)))
-                                            Rows Removed by Filter: 471148
-                                            Buffers: shared hit=1056 read=12402
-Planning Time: 0.147 ms
-Execution Time: 150.411 ms
+                                            Rows Removed by Filter: 471243
+                                            Buffers: shared hit=1024 read=12434
+Planning Time: 0.174 ms
+Execution Time: 153.194 ms

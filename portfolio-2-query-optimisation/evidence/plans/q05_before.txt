@@ -11,35 +11,35 @@ WITH vol AS (
 )
 SELECT * FROM ranked WHERE rnk <= 5 ORDER BY kyc_tier, rnk;
 
-Incremental Sort  (cost=8590.89..9972.44 rows=18857 width=70) (actual time=155.399..155.405 rows=20 loops=1)
+Incremental Sort  (cost=8585.30..9967.64 rows=18867 width=70) (actual time=145.121..145.128 rows=20 loops=1)
   Sort Key: c.kyc_tier, (rank() OVER (?))
   Presorted Key: c.kyc_tier
   Full-sort Groups: 1  Sort Method: quicksort  Average Memory: 26kB  Peak Memory: 26kB
-  Buffers: shared hit=2692, temp read=25 written=48
-  ->  WindowAgg  (cost=8208.97..8586.11 rows=18857 width=70) (actual time=153.590..155.392 rows=20 loops=1)
+  Buffers: shared hit=2692, temp read=15 written=39
+  ->  WindowAgg  (cost=8203.16..8580.50 rows=18867 width=70) (actual time=142.663..145.107 rows=20 loops=1)
         Run Condition: (rank() OVER (?) <= 5)
-        Buffers: shared hit=2692, temp read=25 written=48
-        ->  Sort  (cost=8208.97..8256.11 rows=18857 width=62) (actual time=153.574..154.503 rows=19701 loops=1)
+        Buffers: shared hit=2692, temp read=15 written=39
+        ->  Sort  (cost=8203.16..8250.33 rows=18867 width=62) (actual time=142.646..143.852 rows=19702 loops=1)
               Sort Key: c.kyc_tier, v.ngn_sold DESC
               Sort Method: quicksort  Memory: 2153kB
-              Buffers: shared hit=2692, temp read=25 written=48
-              ->  Hash Join  (cost=6345.33..6869.85 rows=18857 width=62) (actual time=88.681..96.759 rows=19701 loops=1)
+              Buffers: shared hit=2692, temp read=15 written=39
+              ->  Hash Join  (cost=6338.74..6863.27 rows=18867 width=62) (actual time=86.245..95.220 rows=19702 loops=1)
                     Hash Cond: (c.customer_id = v.customer_id)
-                    Buffers: shared hit=2692, temp read=25 written=48
-                    ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=22) (actual time=0.007..1.717 rows=20001 loops=1)
+                    Buffers: shared hit=2692, temp read=15 written=39
+                    ->  Seq Scan on customers c  (cost=0.00..472.01 rows=20001 width=22) (actual time=0.014..1.819 rows=20001 loops=1)
                           Buffers: shared hit=272
-                    ->  Hash  (cost=6109.62..6109.62 rows=18857 width=48) (actual time=88.598..88.600 rows=19701 loops=1)
+                    ->  Hash  (cost=6102.90..6102.90 rows=18867 width=48) (actual time=86.145..86.148 rows=19702 loops=1)
                           Buckets: 32768  Batches: 1  Memory Usage: 1486kB
-                          Buffers: shared hit=2420, temp read=25 written=48
-                          ->  Subquery Scan on v  (cost=5685.34..6109.62 rows=18857 width=48) (actual time=75.794..85.223 rows=19701 loops=1)
-                                Buffers: shared hit=2420, temp read=25 written=48
-                                ->  HashAggregate  (cost=5685.34..5921.05 rows=18857 width=48) (actual time=75.794..83.602 rows=19701 loops=1)
+                          Buffers: shared hit=2420, temp read=15 written=39
+                          ->  Subquery Scan on v  (cost=5678.40..6102.90 rows=18867 width=48) (actual time=73.019..82.442 rows=19702 loops=1)
+                                Buffers: shared hit=2420, temp read=15 written=39
+                                ->  HashAggregate  (cost=5678.40..5914.23 rows=18867 width=48) (actual time=73.018..80.865 rows=19702 loops=1)
                                       Group Key: o.customer_id
-                                      Batches: 5  Memory Usage: 8241kB  Disk Usage: 240kB
-                                      Buffers: shared hit=2420, temp read=25 written=48
-                                      ->  Seq Scan on fx_orders o  (cost=0.00..5045.00 rows=85378 width=16) (actual time=0.006..41.627 rows=85343 loops=1)
+                                      Batches: 5  Memory Usage: 8241kB  Disk Usage: 224kB
+                                      Buffers: shared hit=2420, temp read=15 written=39
+                                      ->  Seq Scan on fx_orders o  (cost=0.00..5045.00 rows=84453 width=16) (actual time=0.008..39.923 rows=84725 loops=1)
                                             Filter: (placed_at >= (now() - '90 days'::interval))
-                                            Rows Removed by Filter: 64657
+                                            Rows Removed by Filter: 65275
                                             Buffers: shared hit=2420
-Planning Time: 0.180 ms
-Execution Time: 155.997 ms
+Planning Time: 0.365 ms
+Execution Time: 145.864 ms

@@ -1,8 +1,8 @@
 -- Q9 Support/idempotency lookup by external reference (UNIQUE index already exists -> control query)
 SELECT txn_id, txn_type, status, customer_id, created_at FROM fx.transactions WHERE reference = 'FXC-0054321';
 
-Index Scan using transactions_reference_key on transactions  (cost=0.42..8.44 rows=1 width=44) (actual time=0.026..0.027 rows=1 loops=1)
+Index Scan using transactions_reference_key on transactions  (cost=0.42..8.44 rows=1 width=44) (actual time=0.016..0.017 rows=1 loops=1)
   Index Cond: ((reference)::text = 'FXC-0054321'::text)
   Buffers: shared hit=4
-Planning Time: 0.055 ms
-Execution Time: 0.041 ms
+Planning Time: 0.042 ms
+Execution Time: 0.028 ms
