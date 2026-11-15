@@ -1,0 +1,5 @@
+﻿ customers_over_tier_limit_on_a_seed_only_day 
+----------------------------------------------
+                                          123
+(1 row)
+
