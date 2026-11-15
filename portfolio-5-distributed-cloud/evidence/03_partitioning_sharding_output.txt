@@ -1,0 +1,200 @@
+﻿Pager usage is off.
+SET
+########## A. RANGE PARTITIONING of fx_rates by month ##########
+ first_tick | last_tick  |  count  
+------------+------------+---------
+ 2026-05-18 | 2026-11-14 | 1440000
+(1 row)
+
+psql:portfolio-5-distributed-cloud/03_partitioning_and_sharding.sql:13: NOTICE:  table "fx_rates_p" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+DO
+CREATE INDEX
+Timing is on.
+INSERT 0 1440000
+Time: 64653.925 ms (01:04.654)
+Timing is off.
+ANALYZE
+--- rows per partition
+     partition      |  heap   |     rows     
+--------------------+---------+--------------
+ fx_rates_p_2026_05 | 7968 kB |      106,488
+ fx_rates_p_2026_06 | 18 MB   |      240,480
+ fx_rates_p_2026_07 | 18 MB   |      248,526
+ fx_rates_p_2026_08 | 18 MB   |      248,508
+ fx_rates_p_2026_09 | 18 MB   |      240,498
+ fx_rates_p_2026_10 | 18 MB   |      248,508
+ fx_rates_p_2026_11 | 8000 kB |      106,992
+(7 rows)
+
+--- same query, NON-partitioned table (index scan over the whole 1.44M-row index)
+                                                                        QUERY PLAN                                                                         
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ HashAggregate (actual rows=10 loops=1)
+   Group Key: date_trunc('day'::text, captured_at)
+   Batches: 1  Memory Usage: 217kB
+   ->  Bitmap Heap Scan on fx_rates (actual rows=4038 loops=1)
+         Recheck Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = 1) AND (captured_at >= (now() - '10 days'::interval)))
+         Heap Blocks: exact=39
+         ->  Bitmap Index Scan on idx_fx_rates_pair_lp_time (actual rows=4038 loops=1)
+               Index Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = 1) AND (captured_at >= (now() - '10 days'::interval)))
+ Planning Time: 1.936 ms
+ Execution Time: 19.659 ms
+(10 rows)
+
+--- same query, PARTITIONED table: only the partitions overlapping the last 10 days are touched (partition pruning)
+                                                                           QUERY PLAN                                                                            
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ HashAggregate (actual rows=10 loops=1)
+   Group Key: (date_trunc('day'::text, fx_rates_p.captured_at))
+   Batches: 1  Memory Usage: 49kB
+   ->  Append (actual rows=4038 loops=1)
+         Subplans Removed: 6
+         ->  Bitmap Heap Scan on fx_rates_p_2026_11 fx_rates_p_1 (actual rows=4038 loops=1)
+               Recheck Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = 1) AND (captured_at >= (now() - '10 days'::interval)))
+               Heap Blocks: exact=39
+               ->  Bitmap Index Scan on fx_rates_p_2026_11_base_ccy_quote_ccy_lp_id_captured_at_idx (actual rows=4038 loops=1)
+                     Index Cond: ((base_ccy = 'USD'::bpchar) AND (quote_ccy = 'NGN'::bpchar) AND (lp_id = 1) AND (captured_at >= (now() - '10 days'::interval)))
+ Planning Time: 4.503 ms
+ Execution Time: 8.202 ms
+(12 rows)
+
+--- RETENTION: remove the oldest month. DELETE on the plain table (rolled back, just timing) vs DETACH PARTITION
+Timing is on.
+BEGIN
+Time: 1.966 ms
+DELETE 240498
+Time: 1480.755 ms (00:01.481)
+ROLLBACK
+Time: 3.201 ms
+Time: 6.402 ms
+ALTER TABLE
+Time: 125.714 ms
+Timing is off.
+(DETACH is a metadata change: no rows are rewritten. Re-attaching the partition to leave data intact:)
+ALTER TABLE
+ rows_in_partitioned_table_after_reattach 
+------------------------------------------
+                                  1440000
+(1 row)
+
+
+########## B. SHARDING wallets: HASH(customer_id) across two shard databases via postgres_fdw ##########
+You are now connected to database "postgres" as user "pguser".
+psql:portfolio-5-distributed-cloud/03_partitioning_and_sharding.sql:58: NOTICE:  database "nl_shard1" does not exist, skipping
+DROP DATABASE
+psql:portfolio-5-distributed-cloud/03_partitioning_and_sharding.sql:58: NOTICE:  database "nl_shard2" does not exist, skipping
+DROP DATABASE
+CREATE DATABASE
+CREATE DATABASE
+You are now connected to database "nl_shard1" as user "pguser".
+CREATE TABLE
+CREATE INDEX
+You are now connected to database "nl_shard2" as user "pguser".
+CREATE TABLE
+CREATE INDEX
+You are now connected to database "nairalink" as user "pguser".
+CREATE EXTENSION
+psql:portfolio-5-distributed-cloud/03_partitioning_and_sharding.sql:67: NOTICE:  schema "dist" does not exist, skipping
+DROP SCHEMA
+CREATE SCHEMA
+psql:portfolio-5-distributed-cloud/03_partitioning_and_sharding.sql:68: NOTICE:  server "shard1" does not exist, skipping
+DROP SERVER
+psql:portfolio-5-distributed-cloud/03_partitioning_and_sharding.sql:68: NOTICE:  server "shard2" does not exist, skipping
+DROP SERVER
+CREATE SERVER
+CREATE SERVER
+CREATE USER MAPPING
+CREATE USER MAPPING
+CREATE TABLE
+CREATE FOREIGN TABLE
+CREATE FOREIGN TABLE
+Timing is on.
+INSERT 0 80007
+Time: 3848.687 ms (00:03.849)
+Timing is off.
+--- distribution of the 80,007 wallets across shards
+ shard_partition | wallets | customers 
+-----------------+---------+-----------
+ dist.wallets_s1 |   40095 |     10023
+ dist.wallets_s2 |   39912 |      9978
+(2 rows)
+
+--- point lookup by shard key: ONLY ONE shard is contacted (partition pruning)
+                                                  QUERY PLAN                                                  
+--------------------------------------------------------------------------------------------------------------
+ Foreign Scan on dist.wallets_s2 wallets
+   Output: wallets.wallet_id, wallets.currency_code, wallets.balance
+   Remote SQL: SELECT wallet_id, currency_code, balance FROM public.wallets_shard WHERE ((customer_id = 777))
+(3 rows)
+
+ wallet_id | currency_code |    balance    
+-----------+---------------+---------------
+      3108 | NGN           | 40954657.1400
+      3109 | USD           |        0.0000
+      3110 | GBP           |      251.2337
+      3111 | EUR           |      306.2914
+(4 rows)
+
+--- lookup WITHOUT the shard key (by wallet_id): must ask EVERY shard (scatter-gather)
+                 QUERY PLAN                 
+--------------------------------------------
+ Append
+   ->  Foreign Scan on wallets_s1 wallets_1
+   ->  Foreign Scan on wallets_s2 wallets_2
+(3 rows)
+
+SET
+--- cross-shard aggregate, GROUP BY a NON-shard column (currency): PostgreSQL 16 cannot push this aggregate down;
+--- every shard ships its raw rows to the coordinator, which aggregates (cost grows with data volume)
+                                                         QUERY PLAN                                                         
+----------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate
+   Output: wallets.currency_code, sum(wallets.balance)
+   Group Key: wallets.currency_code
+   ->  Sort
+         Output: wallets.currency_code, wallets.balance
+         Sort Key: wallets.currency_code
+         ->  Append
+               ->  Foreign Scan on dist.wallets_s1 wallets_1
+                     Output: wallets_1.currency_code, wallets_1.balance
+                     Remote SQL: SELECT currency_code, balance FROM public.wallets_shard WHERE ((wallet_type = 'CUSTOMER'))
+               ->  Foreign Scan on dist.wallets_s2 wallets_2
+                     Output: wallets_2.currency_code, wallets_2.balance
+                     Remote SQL: SELECT currency_code, balance FROM public.wallets_shard WHERE ((wallet_type = 'CUSTOMER'))
+(13 rows)
+
+--- GROUP BY the SHARD KEY (customer_id): each customer lives on one shard, so the aggregate IS pushed down (Remote SQL contains sum/GROUP BY)
+                                                                         QUERY PLAN                                                                         
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Append
+   ->  Foreign Scan
+         Output: wallets.customer_id, (sum(wallets.balance))
+         Relations: Aggregate on (dist.wallets_s1 wallets)
+         Remote SQL: SELECT customer_id, sum(balance) FROM public.wallets_shard WHERE ((wallet_type = 'CUSTOMER')) AND ((currency_code = 'NGN')) GROUP BY 1
+   ->  Foreign Scan
+         Output: wallets_1.customer_id, (sum(wallets_1.balance))
+         Relations: Aggregate on (dist.wallets_s2 wallets_1)
+         Remote SQL: SELECT customer_id, sum(balance) FROM public.wallets_shard WHERE ((wallet_type = 'CUSTOMER')) AND ((currency_code = 'NGN')) GROUP BY 1
+(9 rows)
+
+--- correctness: sharded totals == original totals
+   src    | currency_code |        sum        
+----------+---------------+-------------------
+ original | EUR           |      4488279.6091
+ sharded  | EUR           |      4488279.6091
+ original | GBP           |      3859334.3364
+ sharded  | GBP           |      3859334.3364
+ original | NGN           | 756220231411.1700
+ sharded  | NGN           | 756220231411.1700
+ original | USD           |      4892638.6360
+ sharded  | USD           |      4892638.6360
+(8 rows)
+
+ totals_identical 
+------------------
+ t
+(1 row)
+

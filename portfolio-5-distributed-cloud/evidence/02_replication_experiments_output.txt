@@ -1,0 +1,10 @@
+﻿Traceback (most recent call last):
+  File "C:\Users\Rajitri\Downloads\nairalinkfx-multi-currency-ledger-core\portfolio-5-distributed-cloud\02_replication_experiments.py", line 17, in <module>
+    pri = psycopg.connect(P, autocommit=True); rep = psycopg.connect(R, autocommit=True)
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Rajitri\Downloads\nairalinkfx-multi-currency-ledger-core\.venv\Lib\site-packages\psycopg\connection.py", line 134, in connect
+    raise new_ex.with_traceback(None)
+psycopg.errors.ConnectionTimeout: connection timeout expired
+Multiple connection attempts failed. All failures were:
+- host: None, port: '5433', hostaddr: '::1': connection timeout expired
+- host: None, port: '5433', hostaddr: '127.0.0.1': connection timeout expired
