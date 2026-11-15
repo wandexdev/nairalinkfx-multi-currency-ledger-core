@@ -1,10 +1,41 @@
-﻿Traceback (most recent call last):
-  File "C:\Users\Rajitri\Downloads\nairalinkfx-multi-currency-ledger-core\portfolio-5-distributed-cloud\02_replication_experiments.py", line 17, in <module>
-    pri = psycopg.connect(P, autocommit=True); rep = psycopg.connect(R, autocommit=True)
-                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\Rajitri\Downloads\nairalinkfx-multi-currency-ledger-core\.venv\Lib\site-packages\psycopg\connection.py", line 134, in connect
-    raise new_ex.with_traceback(None)
-psycopg.errors.ConnectionTimeout: connection timeout expired
-Multiple connection attempts failed. All failures were:
-- host: None, port: '5433', hostaddr: '::1': connection timeout expired
-- host: None, port: '5433', hostaddr: '127.0.0.1': connection timeout expired
+﻿
+==============================================================================
+E1  Standby is read-only: writes are rejected, reads work
+==============================================================================
+primary pg_is_in_recovery(): False | standby: True
+standby read  -> customers: 20001 | primary: 20001
+standby write -> ERROR: cannot execute INSERT in a read-only transaction
+
+==============================================================================
+E2  Asynchronous replication: time until a committed row becomes visible on the standby (60 trials, idle system)
+==============================================================================
+visible after: min 1.14 ms | median 1.62 ms | p95 3.60 ms | max 23.13 ms
+
+==============================================================================
+E3  Stale reads (read-your-writes violation) under ASYNC: write on primary, read IMMEDIATELY from standby (300 trials)
+==============================================================================
+stale reads: 299 / 300 (99.7%)  -> async replication is eventually consistent for reads on the standby
+
+==============================================================================
+E4  Replication lag under a write burst (8 workers x 300 FX conversions on the primary)
+==============================================================================
+2,400 conversions in 8.0s  | peak replay backlog 195 KB | peak replay_lag 33 ms | final backlog 0 bytes
+primary vs standby row counts after burst: 729600 / 729600
+
+==============================================================================
+E5  SYNCHRONOUS replication: commit waits for the standby (synchronous_standby_names='replica1')
+==============================================================================
+sync_state now: sync
+commit latency  async: p50 3.00 ms p95 5.77 ms | sync (remote_write/flush): p50 3.19 ms p95 5.73 ms | sync remote_apply: p50 4.20 ms p95 23.05 ms
+stale reads with synchronous_commit=remote_apply: 0 / 300  -> read-your-writes guaranteed on the standby (at a latency cost)
+
+==============================================================================
+E6  CAP in practice: standby goes DOWN while synchronous replication is required
+==============================================================================
+stopping standby ... True
+after 3 s the client's COMMIT is still waiting: True  (primary refuses to acknowledge until a standby confirms -> consistency over availability)
+client gave up (cancel). Note: the row IS committed locally but was NOT replicated: visible on primary = 1
+after relaxing to ASYNC the commit returns in 5.1 ms (availability restored, durability on a single node)
+restarting standby ... True
+standby caught up: primary/standby probe rows = 1562 / 1562
+final state: [('replica1', 'streaming', 'async')]
