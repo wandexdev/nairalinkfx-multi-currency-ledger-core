@@ -84,3 +84,5 @@ Money (ledger) therefore uses **sync/majority**; dashboards, rates and profile r
 | Backups / PITR | WAL archive | automated backups + point-in-time restore |
 | Locality | single node | region close to users (e.g. AWS af-south-1 Cape Town / Lagos edge), plus a cross-region replica for DR |
 If you do deploy a free tier (Neon/Supabase for PostgreSQL, Atlas M0 for MongoDB), add your own screenshots to `evidence/` and mention it in the final document; see `../SETUP.md`, section "Optional cloud deployment".
+
+![failover](../screenshots/P5_failover.png)
