@@ -1,0 +1,51 @@
+﻿
+==============================================================================
+M1  Topology
+==============================================================================
+members: {'mongo1:27017': 'SECONDARY', 'mongo2:27018': 'PRIMARY', 'mongo3:27019': 'SECONDARY'}
+write concern default / majority commit point available: rs0
+
+==============================================================================
+M2  Write-concern cost: 400 inserts each (median / p95 ms)
+==============================================================================
+  w=1 (primary only)                     p50  13.97 ms  p95  52.89 ms
+  w=1, j=True (journaled on primary)     p50  16.02 ms  p95  47.26 ms
+  w=majority (2 of 3 nodes)              p50  17.16 ms  p95  60.13 ms
+  w=3 (all nodes)                        p50  13.67 ms  p95  34.86 ms
+
+==============================================================================
+M3  Read-your-writes when reading from a SECONDARY (300 trials each)
+==============================================================================
+  w=1, plain secondary read                                          stale reads:  17 / 300
+  w=majority, plain secondary read                                   stale reads:   0 / 300
+  w=majority + causally-consistent session, readConcern=majority     stale reads:   0 / 300
+
+==============================================================================
+M4a  Planned failover: replSetStepDown on the primary while a majority-writer is running
+==============================================================================
+before: {27017: 'SECONDARY', 27018: 'PRIMARY', 27019: 'SECONDARY'}
+after : {27017: 'PRIMARY', 27018: 'SECONDARY', 27019: 'SECONDARY'}
+writer: 331 acknowledged writes, 0 failed writes, worst single-write latency (= outage as seen by the app) 10.65 s
+acknowledged writes missing after failover: 0  -> NO DATA LOSS
+
+==============================================================================
+M4b  Unplanned failure: kill -9 the primary process while a majority-writer is running
+==============================================================================
+before: {27017: 'PRIMARY', 27018: 'SECONDARY', 27019: 'SECONDARY'}
+kill -9 the PRIMARY (port 27017) ...
+after : {27017: 'DOWN', 27018: 'SECONDARY', 27019: 'PRIMARY'}
+writer: 298 acknowledged writes, 0 failed writes, worst single-write latency (= outage as seen by the app) 11.01 s
+acknowledged writes missing after failover: 0  -> NO DATA LOSS
+restarting the killed node ...
+states: {27017: 'DOWN', 27018: 'SECONDARY', 27019: 'PRIMARY'}
+
+==============================================================================
+M5  Lose the MAJORITY: kill 2 of 3 nodes (CP behaviour - consistency over availability)
+==============================================================================
+before: {27017: 'DOWN', 27018: 'SECONDARY', 27019: 'PRIMARY'}
+after 14 s: {27017: 'DOWN', 27018: 'DOWN', 27019: 'SECONDARY'}
+write attempt on the surviving node -> NotPrimaryError (no primary can be elected without a majority: writes refused)
+reads from the surviving node with secondaryPreferred still work: 3129 documents visible (possibly stale)
+after restarting both nodes: {27017: 'SECONDARY', 27018: 'SECONDARY', 27019: 'PRIMARY'}
+documents for this run after full recovery: 3129
+final replica set: {'mongo1:27017': 'SECONDARY', 'mongo2:27018': 'SECONDARY', 'mongo3:27019': 'PRIMARY'}
